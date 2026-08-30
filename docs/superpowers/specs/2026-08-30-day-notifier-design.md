@@ -23,6 +23,8 @@ The first version is a small local Python application with no external dependenc
 
 The process checks the schedule every 15 seconds by default. It sends each event once, using both a desktop popup and Telegram when Telegram settings are present.
 
+The PowerShell launcher can start the notifier in the background, stop it, restart it, show status, print the remaining events for today, and send a test Telegram notification. The AutoHotkey launcher wraps these actions in a tray menu.
+
 The default schedule includes:
 
 - `04:00`: wake up.
@@ -42,6 +44,7 @@ Telegram uses the Bot API. The user creates a bot through BotFather and writes `
 Supported commands:
 
 - `/summary`: show upcoming reminders and inbox items.
+- `/today`: show remaining reminders for the current day.
 - `/next`: show the next reminder.
 - `/done`: mark the last delivered reminder as done.
 - `/snooze 10`: delay the next or last reminder by 10 minutes.

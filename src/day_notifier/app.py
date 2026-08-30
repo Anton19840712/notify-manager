@@ -45,6 +45,8 @@ class NotifierApp:
 
     def run_forever(self) -> None:
         logging.info("Day notifier started in %s", self.root)
+        if self.settings.startup_summary_enabled:
+            self.send_startup_summary()
         while True:
             self.run_once()
             time.sleep(self.settings.check_interval_seconds)
@@ -97,9 +99,39 @@ class NotifierApp:
 
     def summary(self, now: datetime | None = None) -> str:
         current = now or datetime.now()
-        lines = ["Upcoming events:"]
+        lines = ["Ближайшие события:"]
         lines.extend(f"- {event.when:%Y-%m-%d %H:%M} {event.title}" for event in self.schedule.upcoming(current, 10))
         return "\n".join(lines)
+
+    def today(self, now: datetime | None = None) -> str:
+        return format_startup_summary(self.schedule, now or datetime.now())
+
+    def send_startup_summary(self) -> None:
+        if self.telegram is None:
+            return
+        try:
+            self.telegram.send_message(format_startup_summary(self.schedule, datetime.now()))
+        except Exception:
+            logging.exception("Telegram startup summary failed")
+
+    def send_test_notification(self) -> None:
+        text = "Тест notify-manager: канал уведомлений работает."
+        self.desktop.show("notify-manager", text)
+        if self.telegram is None:
+            logging.warning("Telegram settings are missing; test sent only to desktop.")
+            return
+        self.telegram.send_message(text)
+
+
+def format_startup_summary(schedule: Schedule, now: datetime, limit: int = 10) -> str:
+    events = schedule.remaining_today(now, limit=limit)
+    lines = ["notify-manager запущен."]
+    if not events:
+        lines.append("Сегодня больше нет событий.")
+        return "\n".join(lines)
+    lines.append("Сегодня осталось:")
+    lines.extend(f"- {event.when:%H:%M} {event.title}" for event in events)
+    return "\n".join(lines)
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -107,6 +139,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[2])
     parser.add_argument("--once", action="store_true", help="Run one polling cycle and exit")
     parser.add_argument("--summary", action="store_true", help="Print upcoming events and exit")
+    parser.add_argument("--today", action="store_true", help="Print remaining events for today and exit")
+    parser.add_argument("--test-telegram", action="store_true", help="Send a test desktop and Telegram notification")
     return parser
 
 
@@ -116,6 +150,12 @@ def main() -> int:
     app = NotifierApp(args.root.resolve())
     if args.summary:
         print(app.summary())
+        return 0
+    if args.today:
+        print(app.today())
+        return 0
+    if args.test_telegram:
+        app.send_test_notification()
         return 0
     if args.once:
         app.run_once()
@@ -129,4 +169,3 @@ def _make_telegram_client(settings: Settings) -> TelegramClient | None:
         logging.warning("Telegram settings are missing; desktop notifications only.")
         return None
     return TelegramClient(settings.bot_token or "", settings.chat_id or "")
-

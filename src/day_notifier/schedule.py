@@ -74,6 +74,12 @@ class Schedule:
         tomorrow = reference.date() + timedelta(days=1)
         return self.events_for_date(tomorrow)[0]
 
+    def remaining_today(self, reference: datetime, limit: int | None = None) -> list[ScheduleEvent]:
+        events = [event for event in self.events_for_date(reference.date()) if event.when > reference]
+        if limit is None:
+            return events
+        return events[:limit]
+
     def upcoming(self, reference: datetime, limit: int = 5) -> list[ScheduleEvent]:
         events = [event for event in self.events_for_date(reference.date()) if event.when > reference]
         if len(events) < limit:
@@ -88,4 +94,3 @@ def load_schedule(path: Path) -> Schedule:
 def _parse_time(value: str) -> time:
     hour, minute = value.split(":", 1)
     return time(hour=int(hour), minute=int(minute))
-

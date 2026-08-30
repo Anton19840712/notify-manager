@@ -100,7 +100,21 @@ class ScheduleTests(unittest.TestCase):
 
         self.assertEqual(event.event_id, "sleep")
 
+    def test_remaining_today_excludes_past_events_and_tomorrow(self):
+        schedule = Schedule.from_dict(
+            {
+                "events": [
+                    {"id": "wake", "time": "04:00", "title": "Подъем", "message": "Подъем"},
+                    {"id": "bed", "time": "22:00", "title": "Отбой", "message": "Сон"},
+                ],
+                "cycles": [],
+            }
+        )
+
+        events = schedule.remaining_today(datetime(2026, 8, 30, 21, 30))
+
+        self.assertEqual([event.event_id for event in events], ["bed"])
+
 
 if __name__ == "__main__":
     unittest.main()
-

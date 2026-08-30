@@ -4,6 +4,6 @@
   "check_interval_seconds": 15,
   "missed_event_grace_minutes": 5,
   "telegram_poll_seconds": 5,
-  "desktop_enabled": true
+  "desktop_enabled": true,
+  "startup_summary_enabled": true
 }
-

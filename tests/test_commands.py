@@ -90,7 +90,16 @@ class CommandTests(unittest.TestCase):
         self.assertIn("1 пв", result.reply)
         self.assertIn("переслать видео", result.reply)
 
+    def test_today_command_returns_remaining_today_events(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+
+            result = handle_command("/today", context)
+
+        self.assertIn("Сегодня", result.reply)
+        self.assertIn("07:00", result.reply)
+        self.assertIn("1 пв", result.reply)
+
 
 if __name__ == "__main__":
     unittest.main()
-

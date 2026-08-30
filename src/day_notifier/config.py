@@ -15,6 +15,7 @@ class Settings:
     missed_event_grace_minutes: int = 5
     telegram_poll_seconds: int = 5
     desktop_enabled: bool = True
+    startup_summary_enabled: bool = True
 
     @property
     def telegram_enabled(self) -> bool:
@@ -36,5 +37,5 @@ def load_settings(path: Path) -> Settings:
         missed_event_grace_minutes=int(data.get("missed_event_grace_minutes", 5)),
         telegram_poll_seconds=int(data.get("telegram_poll_seconds", 5)),
         desktop_enabled=bool(data.get("desktop_enabled", True)),
+        startup_summary_enabled=bool(data.get("startup_summary_enabled", True)),
     )
-

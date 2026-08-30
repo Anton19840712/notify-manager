@@ -64,6 +64,20 @@
 - [ ] Ignore local secrets, runtime state, and logs.
 - [ ] Run all tests and a dry-run smoke command.
 
+### Task 5: Windows Process Control
+
+**Files:**
+- Modify: `scripts/start-notifier.ps1`
+- Modify: `scripts/start-notifier.ahk`
+- Modify: `src/day_notifier/app.py`
+- Modify: `src/day_notifier/commands.py`
+- Modify: `src/day_notifier/schedule.py`
+
+- [ ] Add `/today` and a startup summary so Telegram confirms today's remaining reminders.
+- [ ] Add PowerShell process control actions: start, stop, restart, status, foreground, today, and test Telegram.
+- [ ] Add AutoHotkey tray menu actions for the same control surface.
+- [ ] Run all tests and smoke commands.
+
 ### Self-Review
 
 The plan covers schedule loading, notification delivery, Telegram commands, local launchers, docs, and secret handling. The first implementation intentionally excludes voice recognition and Windows service installation; those are later extensions after the process proves useful.

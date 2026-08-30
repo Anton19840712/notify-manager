@@ -43,6 +43,9 @@ def handle_command(text: str, context: CommandContext) -> CommandResult:
     if command == "/summary":
         return CommandResult(reply=_summary(context))
 
+    if command == "/today":
+        return CommandResult(reply=_today(context))
+
     if command == "/inbox":
         if not argument.strip():
             return CommandResult(reply="Напиши текст после /inbox.")
@@ -63,7 +66,7 @@ def handle_command(text: str, context: CommandContext) -> CommandResult:
         return CommandResult(reply=f"Готово: {event.title}")
 
     return CommandResult(
-        reply="Команды: /summary, /next, /done, /snooze 10, /inbox текст"
+        reply="Команды: /summary, /today, /next, /done, /snooze 10, /inbox текст"
     )
 
 
@@ -81,6 +84,15 @@ def _summary(context: CommandContext) -> str:
     return "\n".join(lines)
 
 
+def _today(context: CommandContext) -> str:
+    events = context.schedule.remaining_today(context.now(), limit=10)
+    if not events:
+        return "Сегодня больше нет событий."
+    lines = ["Сегодня:"]
+    lines.extend(f"- {event.when:%H:%M} {event.title}" for event in events)
+    return "\n".join(lines)
+
+
 def _format_event(prefix: str, event: ScheduleEvent) -> str:
     return f"{prefix}: {event.when:%H:%M} - {event.title}"
 
@@ -91,4 +103,3 @@ def _parse_snooze_minutes(argument: str) -> int:
     if minutes < 1 or minutes > 240:
         raise ValueError("Snooze must be between 1 and 240 minutes.")
     return minutes
-

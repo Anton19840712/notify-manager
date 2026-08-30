@@ -7,9 +7,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from day_notifier.app import select_due_events
+from day_notifier.app import format_startup_summary, select_due_events
 from day_notifier.config import load_settings
-from day_notifier.schedule import ScheduleEvent
+from day_notifier.schedule import Schedule, ScheduleEvent
 from day_notifier.state import JsonStateStore
 
 
@@ -85,7 +85,23 @@ class ConfigStateAppTests(unittest.TestCase):
         self.assertTrue(state.has_seen(old_event))
         self.assertFalse(state.has_seen(future_event))
 
+    def test_format_startup_summary_lists_remaining_today_events(self):
+        schedule = Schedule.from_dict(
+            {
+                "events": [
+                    {"id": "wake", "time": "04:00", "title": "Подъем", "message": "Подъем"},
+                    {"id": "sleep", "time": "22:00", "title": "Отбой", "message": "Сон"},
+                ],
+                "cycles": [],
+            }
+        )
+
+        text = format_startup_summary(schedule, datetime(2026, 8, 30, 21, 0))
+
+        self.assertIn("notify-manager запущен", text)
+        self.assertIn("Сегодня осталось", text)
+        self.assertIn("22:00 Отбой", text)
+
 
 if __name__ == "__main__":
     unittest.main()
-

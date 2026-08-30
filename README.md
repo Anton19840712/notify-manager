@@ -19,10 +19,43 @@ From PowerShell:
 .\scripts\start-notifier.ps1
 ```
 
+The default mode starts the notifier in the background and writes logs to `logs/`.
+
+Process control:
+
+```powershell
+.\scripts\start-notifier.ps1 -Status
+.\scripts\start-notifier.ps1 -Stop
+.\scripts\start-notifier.ps1 -Restart
+.\scripts\start-notifier.ps1 -Foreground
+```
+
 From AutoHotkey:
 
 ```text
 Run scripts\start-notifier.ahk
+```
+
+The AutoHotkey script starts the notifier and adds tray menu actions:
+
+- `Start`
+- `Stop`
+- `Restart`
+- `Status`
+- `Today`
+- `Summary`
+- `Test Telegram`
+
+Install Windows autostart for the AutoHotkey control:
+
+```powershell
+.\scripts\install-startup-shortcut.ps1
+```
+
+Remove autostart:
+
+```powershell
+.\scripts\install-startup-shortcut.ps1 -Remove
 ```
 
 One-cycle smoke run:
@@ -37,9 +70,22 @@ Print upcoming schedule:
 .\scripts\start-notifier.ps1 -Summary
 ```
 
+Print the remaining reminders for today:
+
+```powershell
+.\scripts\start-notifier.ps1 -Today
+```
+
+Send a test Telegram and desktop notification:
+
+```powershell
+.\scripts\start-notifier.ps1 -TestTelegram
+```
+
 ## Telegram Commands
 
 - `/summary` - upcoming reminders and inbox.
+- `/today` - remaining reminders for today.
 - `/next` - next reminder.
 - `/done` - mark last delivered reminder as done.
 - `/snooze 10` - delay last or next reminder by 10 minutes.
