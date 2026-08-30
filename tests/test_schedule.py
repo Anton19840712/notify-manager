@@ -1,3 +1,4 @@
+import json
 import sys
 import unittest
 from datetime import date, datetime
@@ -10,6 +11,30 @@ from day_notifier.schedule import Schedule
 
 
 class ScheduleTests(unittest.TestCase):
+    def test_default_schedule_contains_detailed_morning_learning_sequence(self):
+        schedule = Schedule.from_dict(
+            json.loads((ROOT / "config" / "schedule.json").read_text(encoding="utf-8"))
+        )
+
+        events = schedule.events_for_date(date(2026, 8, 30))
+
+        self.assertEqual(
+            [(event.event_id, event.title, event.when.strftime("%H:%M")) for event in events[:11]],
+            [
+                ("wake-up", "Подъем", "04:00"),
+                ("morning-block", "Утренний блок: МП + кардио", "04:01"),
+                ("morning-cardio-tail", "Кардио: закрепление состояния", "04:08"),
+                ("spirit-reset", "Дух: добродетели + антируминация", "04:21"),
+                ("day-optimization", "Оптимизация дня", "04:40"),
+                ("target-engineering-article", "Целевая инженерная статья", "05:00"),
+                ("microservices-reading", "Микросервисы", "06:00"),
+                ("water-1", "1 пв", "07:00"),
+                ("meal-1", "1 пп", "07:15"),
+                ("monitoring-reading", "Мониторинг", "07:25"),
+                ("morning-buffer", "Буфер / быт / подготовка к работе", "08:25"),
+            ],
+        )
+
     def test_expands_water_and_food_cycle(self):
         schedule = Schedule.from_dict(
             {
