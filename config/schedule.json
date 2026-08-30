@@ -1,0 +1,63 @@
+{
+  "events": [
+    {
+      "id": "wake-up",
+      "time": "04:00",
+      "title": "Подъем",
+      "message": "Подъем. Не открывай телефон фоном. Сначала состояние."
+    },
+    {
+      "id": "morning-prayer-bike",
+      "time": "04:10",
+      "title": "Утреннее МП + велосипед",
+      "message": "Молитвенное правило, добродетели, анти-руминация, легкое кардио."
+    },
+    {
+      "id": "sleep-minus-60",
+      "time": "21:00",
+      "title": "1 час до сна",
+      "message": "Заворачивай день. Никаких тяжелых рабочих входов без аварии."
+    },
+    {
+      "id": "sleep-minus-15",
+      "time": "21:45",
+      "title": "15 минут до сна",
+      "message": "Закрыть свет, воду, телефон, подготовить утро."
+    },
+    {
+      "id": "sleep-minus-1",
+      "time": "21:59",
+      "title": "1 минута до сна",
+      "message": "Отбой почти сейчас."
+    },
+    {
+      "id": "bedtime",
+      "time": "22:00",
+      "title": "Отбой",
+      "message": "Сон - топливо завтрашнего времени."
+    }
+  ],
+  "cycles": [
+    {
+      "id": "water-food-cycle",
+      "start_time": "07:00",
+      "period_minutes": 145,
+      "count": 4,
+      "items": [
+        {
+          "offset_minutes": 0,
+          "id_template": "water-{n}",
+          "title_template": "{n} пв",
+          "message_template": "{n} прием воды. Выпей воду, затем 15 минут до пищи."
+        },
+        {
+          "offset_minutes": 15,
+          "id_template": "meal-{n}",
+          "title_template": "{n} пп",
+          "message_template": "{n} прием пищи. Контейнер, без хаотичного телефона."
+        }
+      ]
+    }
+  ]
+}
+

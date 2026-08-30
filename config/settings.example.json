@@ -1,0 +1,9 @@
+{
+  "bot_token": "PASTE_BOT_TOKEN_FROM_BOTFATHER",
+  "chat_id": "PASTE_YOUR_CHAT_ID",
+  "check_interval_seconds": 15,
+  "missed_event_grace_minutes": 5,
+  "telegram_poll_seconds": 5,
+  "desktop_enabled": true
+}
+

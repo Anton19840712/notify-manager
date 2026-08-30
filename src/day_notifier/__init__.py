@@ -1,0 +1,2 @@
+"""Local day notifier package."""
+

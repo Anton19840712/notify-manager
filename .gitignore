@@ -1,0 +1,13 @@
+.superpowers/
+
+day-notifier/config/settings.json
+day-notifier/data/state.json
+day-notifier/logs/
+
+config/settings.json
+data/state.json
+logs/
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
