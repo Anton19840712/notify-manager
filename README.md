@@ -45,6 +45,10 @@ The AutoHotkey script starts the notifier and adds tray menu actions:
 - `Today`
 - `Summary`
 - `Test Telegram`
+- `Test Desktop MsgBox`
+- `Desktop On`
+- `Desktop Off`
+- `Desktop Status`
 
 Install Windows autostart for the AutoHotkey control:
 
@@ -82,6 +86,20 @@ Send a test Telegram and desktop notification:
 .\scripts\start-notifier.ps1 -TestTelegram
 ```
 
+Show a blocking center-screen desktop message box:
+
+```powershell
+.\scripts\start-notifier.ps1 -TestDesktop
+```
+
+Control the desktop channel:
+
+```powershell
+.\scripts\start-notifier.ps1 -DesktopOn
+.\scripts\start-notifier.ps1 -DesktopOff
+.\scripts\start-notifier.ps1 -DesktopStatus
+```
+
 ## Telegram Commands
 
 - `/summary` - upcoming reminders and inbox.
@@ -89,6 +107,7 @@ Send a test Telegram and desktop notification:
 - `/next` - next reminder.
 - `/done` - mark last delivered reminder as done.
 - `/snooze 10` - delay last or next reminder by 10 minutes.
+- `/desktop on`, `/desktop off`, `/desktop status` - control center-screen MsgBox reminders.
 - `/inbox text` - append a small task to `data/inbox.md`.
 
 ## Schedule

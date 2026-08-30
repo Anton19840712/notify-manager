@@ -78,6 +78,21 @@
 - [ ] Add AutoHotkey tray menu actions for the same control surface.
 - [ ] Run all tests and smoke commands.
 
+### Task 6: Optional Desktop MsgBox Channel
+
+**Files:**
+- Modify: `src/day_notifier/desktop.py`
+- Modify: `src/day_notifier/config.py`
+- Modify: `src/day_notifier/app.py`
+- Modify: `src/day_notifier/commands.py`
+- Modify: `scripts/start-notifier.ps1`
+- Modify: `scripts/start-notifier.ahk`
+
+- [ ] Add a topmost center-screen Windows MsgBox notifier.
+- [ ] Add Telegram and PowerShell commands to enable, disable, test, and inspect desktop notifications.
+- [ ] Send startup summaries to desktop when the desktop channel is enabled.
+- [ ] Run all tests and smoke commands.
+
 ### Self-Review
 
 The plan covers schedule loading, notification delivery, Telegram commands, local launchers, docs, and secret handling. The first implementation intentionally excludes voice recognition and Windows service installation; those are later extensions after the process proves useful.

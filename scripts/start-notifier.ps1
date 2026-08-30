@@ -7,7 +7,11 @@ param(
     [switch]$Once,
     [switch]$Summary,
     [switch]$Today,
-    [switch]$TestTelegram
+    [switch]$TestTelegram,
+    [switch]$TestDesktop,
+    [switch]$DesktopOn,
+    [switch]$DesktopOff,
+    [switch]$DesktopStatus
 )
 
 $ErrorActionPreference = "Stop"
@@ -104,6 +108,22 @@ if ($Today) {
 }
 if ($TestTelegram) {
     Invoke-NotifierForeground @("--test-telegram")
+    exit $LASTEXITCODE
+}
+if ($TestDesktop) {
+    Invoke-NotifierForeground @("--test-desktop")
+    exit $LASTEXITCODE
+}
+if ($DesktopOn) {
+    Invoke-NotifierForeground @("--desktop-on")
+    exit $LASTEXITCODE
+}
+if ($DesktopOff) {
+    Invoke-NotifierForeground @("--desktop-off")
+    exit $LASTEXITCODE
+}
+if ($DesktopStatus) {
+    Invoke-NotifierForeground @("--desktop-status")
     exit $LASTEXITCODE
 }
 if ($Status) {

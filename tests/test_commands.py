@@ -100,6 +100,37 @@ class CommandTests(unittest.TestCase):
         self.assertIn("07:00", result.reply)
         self.assertIn("1 пв", result.reply)
 
+    def test_desktop_command_can_disable_notifications(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+            calls = []
+            context.set_desktop_enabled = calls.append
+
+            result = handle_command("/desktop off", context)
+
+        self.assertEqual(calls, [False])
+        self.assertIn("выключены", result.reply)
+
+    def test_desktop_command_can_enable_notifications(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+            calls = []
+            context.set_desktop_enabled = calls.append
+
+            result = handle_command("/desktop on", context)
+
+        self.assertEqual(calls, [True])
+        self.assertIn("включены", result.reply)
+
+    def test_desktop_status_command_reports_current_state(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+            context.is_desktop_enabled = lambda: False
+
+            result = handle_command("/desktop status", context)
+
+        self.assertIn("выключены", result.reply)
+
 
 if __name__ == "__main__":
     unittest.main()

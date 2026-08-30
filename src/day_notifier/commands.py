@@ -25,6 +25,8 @@ class CommandContext:
     state: RuntimeState
     inbox_path: Path
     now: Callable[[], datetime]
+    set_desktop_enabled: Callable[[bool], None] | None = None
+    is_desktop_enabled: Callable[[], bool] | None = None
 
 
 @dataclass(frozen=True)
@@ -46,6 +48,9 @@ def handle_command(text: str, context: CommandContext) -> CommandResult:
     if command == "/today":
         return CommandResult(reply=_today(context))
 
+    if command == "/desktop":
+        return CommandResult(reply=_desktop(argument, context))
+
     if command == "/inbox":
         if not argument.strip():
             return CommandResult(reply="Напиши текст после /inbox.")
@@ -66,7 +71,7 @@ def handle_command(text: str, context: CommandContext) -> CommandResult:
         return CommandResult(reply=f"Готово: {event.title}")
 
     return CommandResult(
-        reply="Команды: /summary, /today, /next, /done, /snooze 10, /inbox текст"
+        reply="Команды: /summary, /today, /next, /done, /snooze 10, /desktop on|off|status, /inbox текст"
     )
 
 
@@ -91,6 +96,26 @@ def _today(context: CommandContext) -> str:
     lines = ["Сегодня:"]
     lines.extend(f"- {event.when:%H:%M} {event.title}" for event in events)
     return "\n".join(lines)
+
+
+def _desktop(argument: str, context: CommandContext) -> str:
+    value = argument.strip().lower()
+    if value in {"on", "вкл", "включить"}:
+        if context.set_desktop_enabled is None:
+            return "Desktop-канал недоступен в этом режиме."
+        context.set_desktop_enabled(True)
+        return "Desktop-уведомления включены."
+    if value in {"off", "выкл", "выключить"}:
+        if context.set_desktop_enabled is None:
+            return "Desktop-канал недоступен в этом режиме."
+        context.set_desktop_enabled(False)
+        return "Desktop-уведомления выключены."
+    if value in {"status", "статус", ""}:
+        if context.is_desktop_enabled is None:
+            return "Desktop-канал недоступен в этом режиме."
+        state = "включены" if context.is_desktop_enabled() else "выключены"
+        return f"Desktop-уведомления сейчас {state}."
+    return "Используй: /desktop on, /desktop off или /desktop status."
 
 
 def _format_event(prefix: str, event: ScheduleEvent) -> str:

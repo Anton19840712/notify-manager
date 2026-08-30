@@ -23,7 +23,7 @@ The first version is a small local Python application with no external dependenc
 
 The process checks the schedule every 15 seconds by default. It sends each event once, using both a desktop popup and Telegram when Telegram settings are present.
 
-The PowerShell launcher can start the notifier in the background, stop it, restart it, show status, print the remaining events for today, and send a test Telegram notification. The AutoHotkey launcher wraps these actions in a tray menu.
+The PowerShell launcher can start the notifier in the background, stop it, restart it, show status, print the remaining events for today, test Telegram, test desktop MsgBox, and switch desktop popups on or off. The AutoHotkey launcher wraps these actions in a tray menu.
 
 The default schedule includes:
 
@@ -48,6 +48,7 @@ Supported commands:
 - `/next`: show the next reminder.
 - `/done`: mark the last delivered reminder as done.
 - `/snooze 10`: delay the next or last reminder by 10 minutes.
+- `/desktop on`, `/desktop off`, `/desktop status`: control center-screen desktop MsgBox reminders.
 - `/inbox text`: append a small task to `data/inbox.md`.
 
 ## Desktop

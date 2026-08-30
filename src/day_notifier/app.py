@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 
 from day_notifier.commands import CommandContext, handle_command
-from day_notifier.config import Settings, load_settings
+from day_notifier.config import Settings, load_settings, set_desktop_enabled
 from day_notifier.desktop import DesktopNotifier
 from day_notifier.schedule import Schedule, ScheduleEvent, load_schedule
 from day_notifier.state import JsonStateStore
@@ -37,7 +37,8 @@ class NotifierApp:
     def __init__(self, root: Path) -> None:
         self.root = root
         self.schedule = load_schedule(root / "config" / "schedule.json")
-        self.settings = load_settings(root / "config" / "settings.json")
+        self.settings_path = root / "config" / "settings.json"
+        self.settings = load_settings(self.settings_path)
         self.state = JsonStateStore(root / "data" / "state.json")
         self.inbox_path = root / "data" / "inbox.md"
         self.desktop = DesktopNotifier(enabled=self.settings.desktop_enabled)
@@ -52,6 +53,7 @@ class NotifierApp:
             time.sleep(self.settings.check_interval_seconds)
 
     def run_once(self, now: datetime | None = None) -> None:
+        self.refresh_settings()
         current = now or datetime.now()
         events = self.schedule.events_for_date(current.date()) + self.state.due_snoozes(current)
         due = select_due_events(
@@ -88,6 +90,8 @@ class NotifierApp:
             state=self.state,
             inbox_path=self.inbox_path,
             now=datetime.now,
+            set_desktop_enabled=self.set_desktop_enabled,
+            is_desktop_enabled=self.is_desktop_enabled,
         )
         for command in commands:
             try:
@@ -107,20 +111,39 @@ class NotifierApp:
         return format_startup_summary(self.schedule, now or datetime.now())
 
     def send_startup_summary(self) -> None:
+        text = format_startup_summary(self.schedule, datetime.now())
+        self.desktop.show("notify-manager", text)
         if self.telegram is None:
             return
         try:
-            self.telegram.send_message(format_startup_summary(self.schedule, datetime.now()))
+            self.telegram.send_message(text)
         except Exception:
             logging.exception("Telegram startup summary failed")
 
     def send_test_notification(self) -> None:
         text = "Тест notify-manager: канал уведомлений работает."
-        self.desktop.show("notify-manager", text)
+        self.desktop.show("notify-manager", text, blocking=True)
         if self.telegram is None:
             logging.warning("Telegram settings are missing; test sent only to desktop.")
             return
         self.telegram.send_message(text)
+
+    def test_desktop_notification(self) -> None:
+        self.desktop.show("notify-manager", "Тест desktop MsgBox: центральное окно работает.", blocking=True)
+
+    def set_desktop_enabled(self, enabled: bool) -> None:
+        self.settings = set_desktop_enabled(self.settings_path, enabled)
+        self.desktop.enabled = self.settings.desktop_enabled
+
+    def is_desktop_enabled(self) -> bool:
+        return self.desktop.enabled
+
+    def refresh_settings(self) -> None:
+        previous = self.settings
+        self.settings = load_settings(self.settings_path)
+        self.desktop.enabled = self.settings.desktop_enabled
+        if (previous.bot_token, previous.chat_id) != (self.settings.bot_token, self.settings.chat_id):
+            self.telegram = _make_telegram_client(self.settings)
 
 
 def format_startup_summary(schedule: Schedule, now: datetime, limit: int = 10) -> str:
@@ -141,6 +164,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--summary", action="store_true", help="Print upcoming events and exit")
     parser.add_argument("--today", action="store_true", help="Print remaining events for today and exit")
     parser.add_argument("--test-telegram", action="store_true", help="Send a test desktop and Telegram notification")
+    parser.add_argument("--test-desktop", action="store_true", help="Show a blocking desktop message box")
+    parser.add_argument("--desktop-on", action="store_true", help="Enable desktop message boxes")
+    parser.add_argument("--desktop-off", action="store_true", help="Disable desktop message boxes")
+    parser.add_argument("--desktop-status", action="store_true", help="Print desktop message box status")
     return parser
 
 
@@ -156,6 +183,21 @@ def main() -> int:
         return 0
     if args.test_telegram:
         app.send_test_notification()
+        return 0
+    if args.test_desktop:
+        app.test_desktop_notification()
+        return 0
+    if args.desktop_on:
+        app.set_desktop_enabled(True)
+        print("Desktop-уведомления включены.")
+        return 0
+    if args.desktop_off:
+        app.set_desktop_enabled(False)
+        print("Desktop-уведомления выключены.")
+        return 0
+    if args.desktop_status:
+        state = "включены" if app.is_desktop_enabled() else "выключены"
+        print(f"Desktop-уведомления сейчас {state}.")
         return 0
     if args.once:
         app.run_once()

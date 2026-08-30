@@ -39,3 +39,13 @@ def load_settings(path: Path) -> Settings:
         desktop_enabled=bool(data.get("desktop_enabled", True)),
         startup_summary_enabled=bool(data.get("startup_summary_enabled", True)),
     )
+
+
+def set_desktop_enabled(path: Path, enabled: bool) -> Settings:
+    data: dict[str, Any] = {}
+    if path.exists():
+        data = json.loads(path.read_text(encoding="utf-8"))
+    data["desktop_enabled"] = enabled
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    return load_settings(path)

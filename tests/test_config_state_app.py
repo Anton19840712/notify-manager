@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from day_notifier.app import format_startup_summary, select_due_events
-from day_notifier.config import load_settings
+from day_notifier.config import load_settings, set_desktop_enabled
 from day_notifier.schedule import Schedule, ScheduleEvent
 from day_notifier.state import JsonStateStore
 
@@ -36,6 +36,23 @@ class ConfigStateAppTests(unittest.TestCase):
         self.assertEqual(settings.bot_token, "123:abc")
         self.assertEqual(settings.chat_id, "456")
         self.assertEqual(settings.telegram_poll_seconds, 2)
+
+    def test_set_desktop_enabled_preserves_existing_settings(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "settings.json"
+            path.write_text(
+                '{"bot_token": "123:abc", "chat_id": "456", "desktop_enabled": true}',
+                encoding="utf-8",
+            )
+
+            settings = set_desktop_enabled(path, False)
+
+            reloaded = load_settings(path)
+
+        self.assertFalse(settings.desktop_enabled)
+        self.assertFalse(reloaded.desktop_enabled)
+        self.assertEqual(reloaded.bot_token, "123:abc")
+        self.assertEqual(reloaded.chat_id, "456")
 
     def test_state_persists_seen_event_and_last_event(self):
         with tempfile.TemporaryDirectory() as temp_dir:
