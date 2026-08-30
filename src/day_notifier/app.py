@@ -68,12 +68,12 @@ class NotifierApp:
 
     def notify(self, event: ScheduleEvent) -> None:
         text = f"{event.when:%H:%M} - {event.title}\n{event.message}"
-        self.desktop.show(event.title, text)
         if self.telegram is not None:
             try:
                 self.telegram.send_message(text)
             except Exception:
                 logging.exception("Telegram notification failed")
+        self.desktop.show(event.title, text)
         self.state.mark_notified(event)
 
     def process_telegram_commands(self) -> None:
@@ -112,21 +112,20 @@ class NotifierApp:
 
     def send_startup_summary(self) -> None:
         text = format_startup_summary(self.schedule, datetime.now())
+        if self.telegram is not None:
+            try:
+                self.telegram.send_message(text)
+            except Exception:
+                logging.exception("Telegram startup summary failed")
         self.desktop.show("notify-manager", text)
-        if self.telegram is None:
-            return
-        try:
-            self.telegram.send_message(text)
-        except Exception:
-            logging.exception("Telegram startup summary failed")
 
     def send_test_notification(self) -> None:
         text = "Тест notify-manager: канал уведомлений работает."
-        self.desktop.show("notify-manager", text, blocking=True)
         if self.telegram is None:
             logging.warning("Telegram settings are missing; test sent only to desktop.")
-            return
-        self.telegram.send_message(text)
+        else:
+            self.telegram.send_message(text)
+        self.desktop.show("notify-manager", text, blocking=True)
 
     def test_desktop_notification(self) -> None:
         self.desktop.show("notify-manager", "Тест desktop MsgBox: центральное окно работает.", blocking=True)

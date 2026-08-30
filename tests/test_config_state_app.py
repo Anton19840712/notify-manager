@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from day_notifier.app import format_startup_summary, select_due_events
+from day_notifier.app import NotifierApp, format_startup_summary, select_due_events
 from day_notifier.config import load_settings, set_desktop_enabled
 from day_notifier.schedule import Schedule, ScheduleEvent
 from day_notifier.state import JsonStateStore
@@ -118,6 +118,62 @@ class ConfigStateAppTests(unittest.TestCase):
         self.assertIn("notify-manager запущен", text)
         self.assertIn("Сегодня осталось", text)
         self.assertIn("22:00 Отбой", text)
+
+    def test_test_notification_sends_telegram_before_blocking_desktop_box(self):
+        calls = []
+        app = NotifierApp.__new__(NotifierApp)
+        app.telegram = RecordingTelegram(calls)
+        app.desktop = RecordingDesktop(calls)
+
+        app.send_test_notification()
+
+        self.assertEqual(calls[0][0], "telegram")
+        self.assertEqual(calls[1], ("desktop", "notify-manager", True))
+
+    def test_scheduled_notification_sends_telegram_before_desktop_box(self):
+        calls = []
+        app = NotifierApp.__new__(NotifierApp)
+        app.telegram = RecordingTelegram(calls)
+        app.desktop = RecordingDesktop(calls)
+        app.state = RecordingState(calls)
+        event = ScheduleEvent(
+            event_id="water-1",
+            title="1 пв",
+            message="Выпей воду",
+            when=datetime(2026, 8, 30, 7, 0),
+        )
+
+        app.notify(event)
+
+        self.assertEqual(calls[0][0], "telegram")
+        self.assertEqual(calls[1], ("desktop", "1 пв", False))
+        self.assertEqual(calls[2], ("state", "water-1"))
+
+
+class RecordingTelegram:
+    def __init__(self, calls):
+        self.calls = calls
+
+    def send_message(self, text):
+        self.calls.append(("telegram", text))
+
+
+class RecordingDesktop:
+    def __init__(self, calls):
+        self.calls = calls
+
+    def show(self, title, message, blocking=False):
+        self.calls.append(("desktop", title, blocking))
+        return True
+
+
+class RecordingState:
+    def __init__(self, calls):
+        self.calls = calls
+        self.last_event = None
+
+    def mark_notified(self, event):
+        self.calls.append(("state", event.event_id))
 
 
 if __name__ == "__main__":
