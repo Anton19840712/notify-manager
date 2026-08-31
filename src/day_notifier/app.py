@@ -9,6 +9,7 @@ from pathlib import Path
 from day_notifier.commands import CommandContext, handle_command
 from day_notifier.config import Settings, load_settings, set_desktop_enabled
 from day_notifier.desktop import DesktopNotifier
+from day_notifier.overrides import format_recalculated_food_events, write_compressed_food_override
 from day_notifier.schedule import Schedule, ScheduleEvent, load_schedule
 from day_notifier.state import JsonStateStore
 from day_notifier.telegram_client import TelegramClient
@@ -36,7 +37,9 @@ def select_due_events(
 class NotifierApp:
     def __init__(self, root: Path) -> None:
         self.root = root
-        self.schedule = load_schedule(root / "config" / "schedule.json")
+        self.schedule_path = root / "config" / "schedule.json"
+        self.override_dir = root / "data" / "day_overrides"
+        self.schedule = load_schedule(self.schedule_path, self.override_dir)
         self.settings_path = root / "config" / "settings.json"
         self.settings = load_settings(self.settings_path)
         self.state = JsonStateStore(root / "data" / "state.json")
@@ -54,6 +57,7 @@ class NotifierApp:
 
     def run_once(self, now: datetime | None = None) -> None:
         self.refresh_settings()
+        self.reload_schedule()
         current = now or datetime.now()
         events = self.schedule.events_for_date(current.date()) + self.state.due_snoozes(current)
         due = select_due_events(
@@ -92,6 +96,8 @@ class NotifierApp:
             now=datetime.now,
             set_desktop_enabled=self.set_desktop_enabled,
             is_desktop_enabled=self.is_desktop_enabled,
+            override_dir=self.override_dir,
+            reload_schedule=self.reload_schedule,
         )
         for command in commands:
             try:
@@ -130,6 +136,23 @@ class NotifierApp:
     def test_desktop_notification(self) -> None:
         self.desktop.show("notify-manager", "Тест desktop MsgBox: центральное окно работает.", blocking=True)
 
+    def recalc_food_day(
+        self,
+        remaining_meals: int,
+        cutoff_time: str = "20:45",
+        last_meal_number: int = 1,
+        anchor: datetime | None = None,
+    ) -> str:
+        events = write_compressed_food_override(
+            override_dir=self.override_dir,
+            anchor=anchor or datetime.now(),
+            remaining_meals=remaining_meals,
+            cutoff_time=cutoff_time,
+            last_meal_number=last_meal_number,
+        )
+        self.reload_schedule()
+        return format_recalculated_food_events(events, cutoff_time)
+
     def set_desktop_enabled(self, enabled: bool) -> None:
         self.settings = set_desktop_enabled(self.settings_path, enabled)
         self.desktop.enabled = self.settings.desktop_enabled
@@ -143,6 +166,9 @@ class NotifierApp:
         self.desktop.enabled = self.settings.desktop_enabled
         if (previous.bot_token, previous.chat_id) != (self.settings.bot_token, self.settings.chat_id):
             self.telegram = _make_telegram_client(self.settings)
+
+    def reload_schedule(self) -> None:
+        self.schedule = load_schedule(self.schedule_path, self.override_dir)
 
 
 def format_startup_summary(schedule: Schedule, now: datetime, limit: int = 10) -> str:
@@ -167,6 +193,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--desktop-on", action="store_true", help="Enable desktop message boxes")
     parser.add_argument("--desktop-off", action="store_true", help="Disable desktop message boxes")
     parser.add_argument("--desktop-status", action="store_true", help="Print desktop message box status")
+    parser.add_argument("--recalc-food", type=int, help="Recalculate remaining food events for today")
+    parser.add_argument("--recalc-cutoff", default="20:45", help="Latest meal time for --recalc-food")
+    parser.add_argument("--recalc-anchor", help="Today HH:MM anchor time for the already completed meal")
+    parser.add_argument("--last-meal-number", type=int, default=1, help="Last completed meal number")
     return parser
 
 
@@ -198,6 +228,17 @@ def main() -> int:
         state = "включены" if app.is_desktop_enabled() else "выключены"
         print(f"Desktop-уведомления сейчас {state}.")
         return 0
+    if args.recalc_food is not None:
+        anchor = _parse_today_anchor(args.recalc_anchor) if args.recalc_anchor else None
+        print(
+            app.recalc_food_day(
+                remaining_meals=args.recalc_food,
+                cutoff_time=args.recalc_cutoff,
+                last_meal_number=args.last_meal_number,
+                anchor=anchor,
+            )
+        )
+        return 0
     if args.once:
         app.run_once()
         return 0
@@ -210,3 +251,9 @@ def _make_telegram_client(settings: Settings) -> TelegramClient | None:
         logging.warning("Telegram settings are missing; desktop notifications only.")
         return None
     return TelegramClient(settings.bot_token or "", settings.chat_id or "")
+
+
+def _parse_today_anchor(value: str) -> datetime:
+    hour, minute = value.split(":", 1)
+    current = datetime.now()
+    return current.replace(hour=int(hour), minute=int(minute), second=0, microsecond=0)

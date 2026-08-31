@@ -24,16 +24,28 @@ class Schedule:
         self,
         events: list[dict[str, Any]] | None = None,
         cycles: list[dict[str, Any]] | None = None,
+        day_overrides: dict[str, dict[str, Any]] | None = None,
     ) -> None:
         self._events = events or []
         self._cycles = cycles or []
+        self._day_overrides = day_overrides or {}
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "Schedule":
-        return cls(events=list(data.get("events", [])), cycles=list(data.get("cycles", [])))
+    def from_dict(
+        cls,
+        data: dict[str, Any],
+        day_overrides: dict[str, dict[str, Any]] | None = None,
+    ) -> "Schedule":
+        return cls(
+            events=list(data.get("events", [])),
+            cycles=list(data.get("cycles", [])),
+            day_overrides=day_overrides,
+        )
 
     def events_for_date(self, day: date) -> list[ScheduleEvent]:
         expanded: list[ScheduleEvent] = []
+        override = self._day_overrides.get(day.isoformat(), {})
+        suppressed_cycles = set(str(cycle_id) for cycle_id in override.get("suppress_cycles", []))
 
         for event in self._events:
             expanded.append(
@@ -46,6 +58,8 @@ class Schedule:
             )
 
         for cycle in self._cycles:
+            if str(cycle.get("id", "")) in suppressed_cycles:
+                continue
             start = datetime.combine(day, _parse_time(str(cycle["start_time"])))
             period = timedelta(minutes=int(cycle["period_minutes"]))
             count = int(cycle["count"])
@@ -63,6 +77,16 @@ class Schedule:
                             when=when,
                         )
                     )
+
+        for event in override.get("events", []):
+            expanded.append(
+                ScheduleEvent(
+                    event_id=str(event["id"]),
+                    title=str(event["title"]),
+                    message=str(event.get("message", event["title"])),
+                    when=datetime.combine(day, _parse_time(str(event["time"]))),
+                )
+            )
 
         return sorted(expanded, key=lambda event: event.when)
 
@@ -87,8 +111,21 @@ class Schedule:
         return events[:limit]
 
 
-def load_schedule(path: Path) -> Schedule:
-    return Schedule.from_dict(json.loads(path.read_text(encoding="utf-8")))
+def load_schedule(path: Path, override_dir: Path | None = None) -> Schedule:
+    day_overrides = load_day_overrides(override_dir) if override_dir is not None else {}
+    return Schedule.from_dict(json.loads(path.read_text(encoding="utf-8")), day_overrides=day_overrides)
+
+
+def load_day_overrides(override_dir: Path) -> dict[str, dict[str, Any]]:
+    if not override_dir.exists():
+        return {}
+
+    overrides: dict[str, dict[str, Any]] = {}
+    for path in sorted(override_dir.glob("*.json")):
+        data = json.loads(path.read_text(encoding="utf-8"))
+        day_key = str(data.get("date") or path.stem)
+        overrides[day_key] = data
+    return overrides
 
 
 def _parse_time(value: str) -> time:

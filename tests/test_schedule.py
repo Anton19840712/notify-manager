@@ -11,6 +11,69 @@ from day_notifier.schedule import Schedule
 
 
 class ScheduleTests(unittest.TestCase):
+    def test_day_override_can_suppress_base_food_cycle_for_one_day(self):
+        schedule = Schedule.from_dict(
+            {
+                "events": [
+                    {"id": "wake", "time": "04:00", "title": "Подъем", "message": "Подъем"},
+                ],
+                "cycles": [
+                    {
+                        "id": "food-cycle",
+                        "start_time": "07:00",
+                        "period_minutes": 145,
+                        "count": 1,
+                        "items": [
+                            {
+                                "offset_minutes": 0,
+                                "id_template": "water-{n}",
+                                "title_template": "{n} пв",
+                                "message_template": "{n} прием воды",
+                            },
+                            {
+                                "offset_minutes": 15,
+                                "id_template": "meal-{n}",
+                                "title_template": "{n} пп",
+                                "message_template": "{n} прием пищи",
+                            },
+                        ],
+                    }
+                ],
+            },
+            day_overrides={
+                "2026-08-30": {
+                    "suppress_cycles": ["food-cycle"],
+                    "events": [
+                        {
+                            "id": "override-meal-2",
+                            "time": "15:05",
+                            "title": "2 пп",
+                            "message": "Сжатый прием пищи.",
+                        }
+                    ],
+                }
+            },
+        )
+
+        override_day_events = schedule.events_for_date(date(2026, 8, 30))
+        base_day_events = schedule.events_for_date(date(2026, 8, 31))
+
+        self.assertEqual(
+            [(event.event_id, event.title, event.when.strftime("%H:%M")) for event in override_day_events],
+            [
+                ("wake", "Подъем", "04:00"),
+                ("override-meal-2", "2 пп", "15:05"),
+            ],
+        )
+        self.assertEqual(
+            [(event.event_id, event.title, event.when.strftime("%H:%M")) for event in base_day_events],
+            [
+                ("wake", "Подъем", "04:00"),
+                ("water-1", "1 пв", "07:00"),
+                ("meal-1", "1 пп", "07:15"),
+            ],
+        )
+
     def test_default_schedule_contains_detailed_morning_learning_sequence(self):
         schedule = Schedule.from_dict(
             json.loads((ROOT / "config" / "schedule.json").read_text(encoding="utf-8"))

@@ -3,11 +3,13 @@
 day-notifier/config/settings.json
 day-notifier/data/state.json
 day-notifier/data/notifier.pid
+day-notifier/data/day_overrides/
 day-notifier/logs/
 
 config/settings.json
 data/state.json
 data/notifier.pid
+data/day_overrides/
 logs/
 
 __pycache__/

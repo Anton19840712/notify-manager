@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Callable, Protocol
 
 from day_notifier.inbox import append_inbox_item, read_inbox_items
+from day_notifier.overrides import format_recalculated_food_events, write_compressed_food_override
 from day_notifier.schedule import Schedule, ScheduleEvent
 
 
@@ -27,6 +28,8 @@ class CommandContext:
     now: Callable[[], datetime]
     set_desktop_enabled: Callable[[bool], None] | None = None
     is_desktop_enabled: Callable[[], bool] | None = None
+    override_dir: Path | None = None
+    reload_schedule: Callable[[], None] | None = None
 
 
 @dataclass(frozen=True)
@@ -51,6 +54,9 @@ def handle_command(text: str, context: CommandContext) -> CommandResult:
     if command == "/desktop":
         return CommandResult(reply=_desktop(argument, context))
 
+    if command == "/recalc":
+        return CommandResult(reply=_recalc(argument, context))
+
     if command == "/inbox":
         if not argument.strip():
             return CommandResult(reply="Напиши текст после /inbox.")
@@ -71,7 +77,10 @@ def handle_command(text: str, context: CommandContext) -> CommandResult:
         return CommandResult(reply=f"Готово: {event.title}")
 
     return CommandResult(
-        reply="Команды: /summary, /today, /next, /done, /snooze 10, /desktop on|off|status, /inbox текст"
+        reply=(
+            "Команды: /summary, /today, /next, /done, /snooze 10, "
+            "/recalc food 4, /desktop on|off|status, /inbox текст"
+        )
     )
 
 
@@ -116,6 +125,32 @@ def _desktop(argument: str, context: CommandContext) -> str:
         state = "включены" if context.is_desktop_enabled() else "выключены"
         return f"Desktop-уведомления сейчас {state}."
     return "Используй: /desktop on, /desktop off или /desktop status."
+
+
+def _recalc(argument: str, context: CommandContext) -> str:
+    parts = argument.strip().split()
+    if len(parts) < 2 or parts[0].lower() not in {"food", "meal", "meals", "еда", "питание"}:
+        return "Используй: /recalc food 4 или /recalc food 4 20:45."
+    if context.override_dir is None:
+        return "Пересчет дня недоступен в этом режиме."
+
+    try:
+        remaining_meals = int(parts[1])
+        cutoff_time = parts[2] if len(parts) >= 3 else "20:45"
+        last_meal_number = int(parts[3]) if len(parts) >= 4 else 1
+        events = write_compressed_food_override(
+            override_dir=context.override_dir,
+            anchor=context.now(),
+            remaining_meals=remaining_meals,
+            cutoff_time=cutoff_time,
+            last_meal_number=last_meal_number,
+        )
+    except ValueError as exc:
+        return f"Не смог пересчитать день: {exc}"
+
+    if context.reload_schedule is not None:
+        context.reload_schedule()
+    return format_recalculated_food_events(events, cutoff_time)
 
 
 def _format_event(prefix: str, event: ScheduleEvent) -> str:

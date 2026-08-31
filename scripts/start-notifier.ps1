@@ -11,7 +11,11 @@ param(
     [switch]$TestDesktop,
     [switch]$DesktopOn,
     [switch]$DesktopOff,
-    [switch]$DesktopStatus
+    [switch]$DesktopStatus,
+    [int]$RecalcFood = 0,
+    [string]$RecalcCutoff = "20:45",
+    [string]$RecalcAnchor = "",
+    [int]$LastMealNumber = 1
 )
 
 $ErrorActionPreference = "Stop"
@@ -124,6 +128,18 @@ if ($DesktopOff) {
 }
 if ($DesktopStatus) {
     Invoke-NotifierForeground @("--desktop-status")
+    exit $LASTEXITCODE
+}
+if ($RecalcFood -gt 0) {
+    $recalcArgs = @(
+        "--recalc-food", [string]$RecalcFood,
+        "--recalc-cutoff", $RecalcCutoff,
+        "--last-meal-number", [string]$LastMealNumber
+    )
+    if ($RecalcAnchor) {
+        $recalcArgs += @("--recalc-anchor", $RecalcAnchor)
+    }
+    Invoke-NotifierForeground $recalcArgs
     exit $LASTEXITCODE
 }
 if ($Status) {

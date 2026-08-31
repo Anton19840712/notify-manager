@@ -100,6 +100,14 @@ Control the desktop channel:
 .\scripts\start-notifier.ps1 -DesktopStatus
 ```
 
+Recalculate today's food cycle without changing the base schedule:
+
+```powershell
+.\scripts\start-notifier.ps1 -RecalcFood 4 -RecalcAnchor 13:12 -RecalcCutoff 20:45
+```
+
+This writes a local one-day override to `data/day_overrides/`. Override files are ignored by git.
+
 ## Telegram Commands
 
 - `/summary` - upcoming reminders and inbox.
@@ -107,6 +115,7 @@ Control the desktop channel:
 - `/next` - next reminder.
 - `/done` - mark last delivered reminder as done.
 - `/snooze 10` - delay last or next reminder by 10 minutes.
+- `/recalc food 4` - compress today's remaining food reminders until `20:45`.
 - `/desktop on`, `/desktop off`, `/desktop status` - control center-screen MsgBox reminders.
 - `/inbox text` - append a small task to `data/inbox.md`.
 
@@ -118,3 +127,5 @@ The default schedule uses a 145-minute water/food cycle:
 - `2 пв` at `09:25`, `2 пп` at `09:40`.
 - `3 пв` at `11:50`, `3 пп` at `12:05`.
 - `4 пв` at `14:15`, `4 пп` at `14:30`.
+
+The living practice list is kept in `data/day-practices.md`.
