@@ -123,8 +123,11 @@ This writes a local one-day override to `data/day_overrides/`. Override files ar
 - `/snooze 10` - delay last or next reminder by 10 minutes.
 - `/recalc food 4` - recalculate today's remaining food reminders with a 10-minute eating window and a 2:15 gap after eating.
 - `/shift day 10:00` - rebuild today's start-relative reminders from 10:00; tomorrow keeps the base flow.
+- `/отбой` or `отбой` - delete tracked bot-chat messages and leave one bedtime confirmation.
 - `/desktop on`, `/desktop off`, `/desktop status` - control center-screen MsgBox reminders.
 - `/inbox text` - append a small task to `data/inbox.md`.
+
+Telegram cleanup can only delete messages whose `message_id` was tracked after this feature was enabled. Telegram may reject old messages outside its deletion window, and those are counted as skipped.
 
 ## Schedule
 

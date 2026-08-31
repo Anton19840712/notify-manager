@@ -219,6 +219,28 @@ class CommandTests(unittest.TestCase):
         self.assertIn("Используй: /shift day 10:00", result.reply)
         self.assertFalse((root / "day_overrides").exists())
 
+    def test_bedtime_cleanup_command_uses_cleanup_callback(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+            calls = []
+            context.cleanup_telegram_chat = (
+                lambda: calls.append("cleanup") or "Отбой. Чат очищен: удалено 2, пропущено 0."
+            )
+
+            result = handle_command("/отбой", context)
+
+        self.assertEqual(calls, ["cleanup"])
+        self.assertEqual(result.reply, "Отбой. Чат очищен: удалено 2, пропущено 0.")
+
+    def test_plain_bedtime_cleanup_text_uses_cleanup_callback(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+            context.cleanup_telegram_chat = lambda: "Отбой. Чат очищен: удалено 1, пропущено 0."
+
+            result = handle_command("отбой", context)
+
+        self.assertIn("Чат очищен", result.reply)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -36,6 +36,7 @@ class CommandContext:
     override_dir: Path | None = None
     reload_schedule: Callable[[], None] | None = None
     schedule_path: Path | None = None
+    cleanup_telegram_chat: Callable[[], str] | None = None
 
 
 @dataclass(frozen=True)
@@ -46,6 +47,11 @@ class CommandResult:
 def handle_command(text: str, context: CommandContext) -> CommandResult:
     command, _, argument = text.strip().partition(" ")
     command = command.lower()
+
+    if command in {"/отбой", "отбой"}:
+        if context.cleanup_telegram_chat is None:
+            return CommandResult(reply="Очистка Telegram-чата недоступна в этом режиме.")
+        return CommandResult(reply=context.cleanup_telegram_chat())
 
     if command == "/next":
         event = context.schedule.next_event(context.now())
@@ -88,7 +94,7 @@ def handle_command(text: str, context: CommandContext) -> CommandResult:
     return CommandResult(
         reply=(
             "Команды: /summary, /today, /next, /done, /snooze 10, "
-            "/recalc food 4, /shift day 10:00, /desktop on|off|status, /inbox текст"
+            "/recalc food 4, /shift day 10:00, /отбой, /desktop on|off|status, /inbox текст"
         )
     )
 

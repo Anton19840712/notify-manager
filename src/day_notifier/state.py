@@ -8,6 +8,9 @@ from typing import Any
 from day_notifier.schedule import ScheduleEvent
 
 
+TELEGRAM_MESSAGE_LIMIT = 500
+
+
 class JsonStateStore:
     def __init__(self, path: Path) -> None:
         self.path = path
@@ -22,6 +25,18 @@ class JsonStateStore:
     def telegram_offset(self) -> int | None:
         value = self._data.get("telegram_offset")
         return int(value) if value is not None else None
+
+    @property
+    def telegram_messages(self) -> list[dict[str, Any]]:
+        return list(self._data.get("telegram_messages", []))
+
+    def telegram_message_ids(self) -> list[int]:
+        ids = []
+        for item in self._data.get("telegram_messages", []):
+            message_id = item.get("message_id")
+            if message_id is not None:
+                ids.append(int(message_id))
+        return ids
 
     def set_telegram_offset(self, value: int) -> None:
         self._data["telegram_offset"] = int(value)
@@ -60,6 +75,25 @@ class JsonStateStore:
         events = [_event_from_dict(item) for item in self._data.get("snoozed", [])]
         return [event for event in events if event.when <= now and not self.has_seen(event)]
 
+    def track_telegram_message(self, message_id: int | None, direction: str, when: datetime | None = None) -> None:
+        if message_id is None:
+            return
+        if direction not in {"incoming", "outgoing"}:
+            raise ValueError("direction must be incoming or outgoing")
+        item = {
+            "message_id": int(message_id),
+            "direction": direction,
+            "at": (when or datetime.now()).isoformat(timespec="seconds"),
+        }
+        messages = self._data.setdefault("telegram_messages", [])
+        messages.append(item)
+        del messages[:-TELEGRAM_MESSAGE_LIMIT]
+        self._save()
+
+    def clear_telegram_messages(self) -> None:
+        self._data["telegram_messages"] = []
+        self._save()
+
     def _mark_seen(self, event: ScheduleEvent, status: str) -> None:
         self._data.setdefault("seen", {})[event.key] = {
             "event_id": event.event_id,
@@ -96,4 +130,3 @@ def _event_from_dict(data: dict[str, Any]) -> ScheduleEvent:
         message=str(data["message"]),
         when=datetime.fromisoformat(str(data["when"])),
     )
-

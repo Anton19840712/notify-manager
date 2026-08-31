@@ -12,7 +12,7 @@ from day_notifier.app import NotifierApp, format_startup_summary, select_due_eve
 from day_notifier.config import load_settings, set_desktop_enabled
 from day_notifier.schedule import Schedule, ScheduleEvent
 from day_notifier.state import JsonStateStore
-from day_notifier.telegram_client import TelegramCommand
+from day_notifier.telegram_client import DeleteSummary, TelegramCommand
 
 
 class ConfigStateAppTests(unittest.TestCase):
@@ -90,6 +90,47 @@ class ConfigStateAppTests(unittest.TestCase):
         self.assertEqual(snoozed.when.strftime("%H:%M"), "07:10")
         self.assertEqual(due[0].event_id, "water-1-snooze")
 
+    def test_state_tracks_telegram_messages(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "state.json"
+            state = JsonStateStore(path)
+
+            state.track_telegram_message(10, "incoming", datetime(2026, 8, 31, 21, 0))
+            state.track_telegram_message(11, "outgoing", datetime(2026, 8, 31, 21, 1))
+            reloaded = JsonStateStore(path)
+
+        self.assertEqual(
+            reloaded.telegram_messages,
+            [
+                {"message_id": 10, "direction": "incoming", "at": "2026-08-31T21:00:00"},
+                {"message_id": 11, "direction": "outgoing", "at": "2026-08-31T21:01:00"},
+            ],
+        )
+
+    def test_state_clears_tracked_telegram_messages(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "state.json"
+            state = JsonStateStore(path)
+            state.track_telegram_message(10, "incoming", datetime(2026, 8, 31, 21, 0))
+
+            state.clear_telegram_messages()
+            reloaded = JsonStateStore(path)
+
+        self.assertEqual(reloaded.telegram_messages, [])
+
+    def test_state_caps_tracked_telegram_messages(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "state.json"
+            state = JsonStateStore(path)
+
+            for message_id in range(502):
+                state.track_telegram_message(message_id, "outgoing", datetime(2026, 8, 31, 21, 0))
+            reloaded = JsonStateStore(path)
+
+        self.assertEqual(len(reloaded.telegram_messages), 500)
+        self.assertEqual(reloaded.telegram_message_ids()[0], 2)
+        self.assertEqual(reloaded.telegram_message_ids()[-1], 501)
+
     def test_select_due_events_skips_old_events_and_keeps_fresh_due_events(self):
         now = datetime(2026, 8, 30, 7, 10)
         old_event = ScheduleEvent("old", "Старое", "Старое", now - timedelta(minutes=20))
@@ -122,12 +163,14 @@ class ConfigStateAppTests(unittest.TestCase):
         self.assertIn("22:00 Отбой", text)
 
     def test_test_notification_sends_telegram_before_blocking_desktop_box(self):
-        calls = []
-        app = NotifierApp.__new__(NotifierApp)
-        app.telegram = RecordingTelegram(calls)
-        app.desktop = RecordingDesktop(calls)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            calls = []
+            app = NotifierApp.__new__(NotifierApp)
+            app.telegram = RecordingTelegram(calls)
+            app.desktop = RecordingDesktop(calls)
+            app.state = JsonStateStore(Path(temp_dir) / "state.json")
 
-        app.send_test_notification()
+            app.send_test_notification()
 
         self.assertEqual(calls[0][0], "telegram")
         self.assertEqual(calls[1], ("desktop", "notify-manager", True))
@@ -148,8 +191,56 @@ class ConfigStateAppTests(unittest.TestCase):
         app.notify(event)
 
         self.assertEqual(calls[0][0], "telegram")
-        self.assertEqual(calls[1], ("desktop", "1 пв", False))
-        self.assertEqual(calls[2], ("state", "water-1"))
+        self.assertEqual(calls[1][0], "telegram-state")
+        self.assertEqual(calls[2], ("desktop", "1 пв", False))
+        self.assertEqual(calls[3], ("state", "water-1"))
+
+    def test_scheduled_notification_records_outgoing_telegram_message_id(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            calls = []
+            app = NotifierApp.__new__(NotifierApp)
+            app.telegram = RecordingTelegram(calls)
+            app.desktop = RecordingDesktop(calls)
+            app.state = JsonStateStore(Path(temp_dir) / "state.json")
+            event = ScheduleEvent(
+                event_id="water-1",
+                title="1 пв",
+                message="Выпей воду",
+                when=datetime(2026, 8, 30, 7, 0),
+            )
+
+            app.notify(event)
+
+        self.assertEqual(app.state.telegram_messages[0]["direction"], "outgoing")
+
+    def test_process_telegram_records_incoming_and_reply_message_ids(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_project_files(root)
+            app = NotifierApp(root)
+            app.telegram = RecordingTelegram(
+                [],
+                commands=[TelegramCommand(update_id=10, text="/next", message_id=77)],
+            )
+
+            app.process_telegram_commands()
+
+        self.assertEqual([item["direction"] for item in app.state.telegram_messages], ["incoming", "outgoing"])
+
+    def test_cleanup_telegram_chat_deletes_tracked_messages_and_returns_confirmation(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            calls = []
+            app = NotifierApp.__new__(NotifierApp)
+            app.telegram = RecordingTelegram(calls)
+            app.state = JsonStateStore(Path(temp_dir) / "state.json")
+            app.state.track_telegram_message(10, "incoming", datetime(2026, 8, 31, 21, 0))
+            app.state.track_telegram_message(11, "outgoing", datetime(2026, 8, 31, 21, 1))
+
+            result = app.cleanup_telegram_chat()
+
+        self.assertIn("Отбой. Чат очищен", result)
+        self.assertIn(("delete_messages", [10, 11]), calls)
+        self.assertEqual(app.state.telegram_messages, [])
 
     def test_process_telegram_shift_command_writes_day_override(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -196,10 +287,15 @@ class RecordingTelegram:
 
     def send_message(self, text):
         self.calls.append(("telegram", text))
+        return 101 + len(self.calls)
 
     def get_commands(self, offset=None):
         self.calls.append(("get_commands", offset))
         return self.commands
+
+    def delete_messages(self, message_ids):
+        self.calls.append(("delete_messages", list(message_ids)))
+        return DeleteSummary(deleted=len(message_ids), failed=0)
 
 
 class RecordingDesktop:
@@ -215,6 +311,9 @@ class RecordingState:
     def __init__(self, calls):
         self.calls = calls
         self.last_event = None
+
+    def track_telegram_message(self, message_id, direction, when=None):
+        self.calls.append(("telegram-state", message_id, direction))
 
     def mark_notified(self, event):
         self.calls.append(("state", event.event_id))

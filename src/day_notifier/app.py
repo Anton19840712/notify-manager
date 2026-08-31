@@ -75,11 +75,19 @@ class NotifierApp:
             self.notify(event)
         self.process_telegram_commands()
 
+    def send_telegram_message(self, text: str, track: bool = True) -> int | None:
+        if self.telegram is None:
+            return None
+        message_id = self.telegram.send_message(text)
+        if track:
+            self.state.track_telegram_message(message_id, "outgoing")
+        return message_id
+
     def notify(self, event: ScheduleEvent) -> None:
         text = f"{event.when:%H:%M} - {event.title}\n{event.message}"
         if self.telegram is not None:
             try:
-                self.telegram.send_message(text)
+                self.send_telegram_message(text)
             except Exception:
                 logging.exception("Telegram notification failed")
         self.desktop.show(event.title, text)
@@ -104,11 +112,13 @@ class NotifierApp:
             override_dir=self.override_dir,
             reload_schedule=self.reload_schedule,
             schedule_path=self.schedule_path,
+            cleanup_telegram_chat=self.cleanup_telegram_chat,
         )
         for command in commands:
             try:
+                self.state.track_telegram_message(command.message_id, "incoming")
                 result = handle_command(command.text, context)
-                self.telegram.send_message(result.reply)
+                self.send_telegram_message(result.reply)
                 self.state.set_telegram_offset(command.update_id + 1)
             except Exception:
                 logging.exception("Telegram command handling failed: %s", command.text)
@@ -126,7 +136,7 @@ class NotifierApp:
         text = format_startup_summary(self.schedule, datetime.now())
         if self.telegram is not None:
             try:
-                self.telegram.send_message(text)
+                self.send_telegram_message(text)
             except Exception:
                 logging.exception("Telegram startup summary failed")
         self.desktop.show("notify-manager", text)
@@ -136,7 +146,7 @@ class NotifierApp:
         if self.telegram is None:
             logging.warning("Telegram settings are missing; test sent only to desktop.")
         else:
-            self.telegram.send_message(text)
+            self.send_telegram_message(text)
         self.desktop.show("notify-manager", text, blocking=True)
 
     def test_desktop_notification(self) -> None:
@@ -172,6 +182,20 @@ class NotifierApp:
         lines = [f"Перенес день на {start_time}.", "Сегодня:"]
         lines.extend(f"- {event['time']} {event['title']}" for event in data.get("events", []))
         return "\n".join(lines)
+
+    def cleanup_telegram_chat(self) -> str:
+        if self.telegram is None:
+            return "Очистка Telegram-чата недоступна: Telegram выключен."
+        message_ids = self.state.telegram_message_ids()
+        if not message_ids:
+            return "Отбой. Пока нечего очищать: бот еще не накопил отслеживаемые сообщения."
+        try:
+            summary = self.telegram.delete_messages(message_ids)
+        except Exception:
+            logging.exception("Telegram chat cleanup failed")
+            return "Отбой. Не смог очистить Telegram-чат: Telegram вернул ошибку."
+        self.state.clear_telegram_messages()
+        return f"Отбой. Чат очищен: удалено {summary.deleted}, пропущено {summary.failed}."
 
     def set_desktop_enabled(self, enabled: bool) -> None:
         self.settings = set_desktop_enabled(self.settings_path, enabled)
