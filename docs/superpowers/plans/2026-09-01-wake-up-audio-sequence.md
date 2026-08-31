@@ -68,19 +68,19 @@ Copy `C:\Users\MSI\Desktop\rota-podem.mp3` to `day-notifier/data/audio/rota-pode
 
 Document the wake-up sequence: cue, two-second pause, morning prayer.
 
-- [ ] **Step 3: Run full mirror verification**
+- [x] **Step 3: Run full mirror verification**
 
 Run tests, compileall, diff check, placeholder scan, and secret scan.
 
-- [ ] **Step 4: Copy to private project**
+- [x] **Step 4: Copy to private project**
 
 Copy audio code, tests, README, MP3 asset, spec, and plan to the private project.
 
-- [ ] **Step 5: Run private verification**
+- [x] **Step 5: Run private verification**
 
 Run tests, compileall, diff check, placeholder scan, secret scan, and `-Today` in `C:\мое программное обеспечение\notify-manager`.
 
-- [ ] **Step 6: Commit, push, restart**
+- [x] **Step 6: Commit, push, restart**
 
 Commit mirror and private changes, push private `origin/main`, restart notifier, then check status and logs.
 
