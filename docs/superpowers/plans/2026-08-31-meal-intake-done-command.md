@@ -136,7 +136,7 @@ Copy changed source, tests, README, spec, and plan files to the private project.
 
 Run the same checks in `C:\мое программное обеспечение\notify-manager`.
 
-- [ ] **Step 5: Commit, push, restart**
+- [x] **Step 5: Commit, push, restart**
 
 Commit private changes, push `origin/main`, restart the notifier, check `-Status`, `-Today`, and logs.
 
