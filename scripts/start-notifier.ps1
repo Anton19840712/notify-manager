@@ -15,7 +15,8 @@ param(
     [int]$RecalcFood = 0,
     [int]$RecalcMinInterval = 135,
     [string]$RecalcAnchor = "",
-    [int]$LastMealNumber = 1
+    [int]$LastMealNumber = 1,
+    [string]$ShiftDay = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -140,6 +141,10 @@ if ($RecalcFood -gt 0) {
         $recalcArgs += @("--recalc-anchor", $RecalcAnchor)
     }
     Invoke-NotifierForeground $recalcArgs
+    exit $LASTEXITCODE
+}
+if ($ShiftDay) {
+    Invoke-NotifierForeground @("--shift-day", $ShiftDay)
     exit $LASTEXITCODE
 }
 if ($Status) {

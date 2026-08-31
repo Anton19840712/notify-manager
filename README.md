@@ -106,6 +106,12 @@ Recalculate today's food cycle without changing the base schedule:
 .\scripts\start-notifier.ps1 -RecalcFood 4 -RecalcAnchor 13:12 -RecalcMinInterval 135
 ```
 
+Shift only today's day start without changing the base `04:00` schedule:
+
+```powershell
+.\scripts\start-notifier.ps1 -ShiftDay 10:00
+```
+
 This writes a local one-day override to `data/day_overrides/`. Override files are ignored by git.
 
 ## Telegram Commands
@@ -115,7 +121,8 @@ This writes a local one-day override to `data/day_overrides/`. Override files ar
 - `/next` - next reminder.
 - `/done` - mark last delivered reminder as done.
 - `/snooze 10` - delay last or next reminder by 10 minutes.
-- `/recalc food 4` - recalculate today's remaining food reminders with a 2:15 minimum interval.
+- `/recalc food 4` - recalculate today's remaining food reminders with a 10-minute eating window and a 2:15 gap after eating.
+- `/shift day 10:00` - rebuild today's start-relative reminders from 10:00; tomorrow keeps the base flow.
 - `/desktop on`, `/desktop off`, `/desktop status` - control center-screen MsgBox reminders.
 - `/inbox text` - append a small task to `data/inbox.md`.
 

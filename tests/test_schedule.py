@@ -11,6 +11,57 @@ from day_notifier.schedule import Schedule
 
 
 class ScheduleTests(unittest.TestCase):
+    def test_day_override_can_suppress_fixed_events_for_one_day(self):
+        schedule = Schedule.from_dict(
+            {
+                "events": [
+                    {"id": "wake", "time": "04:00", "title": "Подъем", "message": "Подъем"},
+                    {"id": "learn", "time": "05:00", "title": "Учеба", "message": "Учиться"},
+                    {"id": "bed", "time": "22:00", "title": "Отбой", "message": "Сон"},
+                ],
+                "cycles": [],
+            },
+            day_overrides={
+                "2026-08-30": {
+                    "suppress_events": ["wake", "learn"],
+                    "events": [
+                        {
+                            "id": "wake",
+                            "time": "10:00",
+                            "title": "Подъем",
+                            "message": "Сдвинутый подъем",
+                        },
+                        {
+                            "id": "learn",
+                            "time": "11:00",
+                            "title": "Учеба",
+                            "message": "Сдвинутая учеба",
+                        },
+                    ],
+                }
+            },
+        )
+
+        shifted_events = schedule.events_for_date(date(2026, 8, 30))
+        base_events = schedule.events_for_date(date(2026, 8, 31))
+
+        self.assertEqual(
+            [(event.event_id, event.title, event.when.strftime("%H:%M")) for event in shifted_events],
+            [
+                ("wake", "Подъем", "10:00"),
+                ("learn", "Учеба", "11:00"),
+                ("bed", "Отбой", "22:00"),
+            ],
+        )
+        self.assertEqual(
+            [(event.event_id, event.title, event.when.strftime("%H:%M")) for event in base_events],
+            [
+                ("wake", "Подъем", "04:00"),
+                ("learn", "Учеба", "05:00"),
+                ("bed", "Отбой", "22:00"),
+            ],
+        )
+
     def test_day_override_can_suppress_base_food_cycle_for_one_day(self):
         schedule = Schedule.from_dict(
             {

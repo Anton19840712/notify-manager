@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import time
 from datetime import datetime
@@ -9,7 +10,11 @@ from pathlib import Path
 from day_notifier.commands import CommandContext, handle_command
 from day_notifier.config import Settings, load_settings, set_desktop_enabled
 from day_notifier.desktop import DesktopNotifier
-from day_notifier.overrides import format_min_interval_food_events, write_min_interval_food_override
+from day_notifier.overrides import (
+    format_min_interval_food_events,
+    write_min_interval_food_override,
+    write_shifted_day_override,
+)
 from day_notifier.schedule import Schedule, ScheduleEvent, load_schedule
 from day_notifier.state import JsonStateStore
 from day_notifier.telegram_client import TelegramClient
@@ -98,6 +103,7 @@ class NotifierApp:
             is_desktop_enabled=self.is_desktop_enabled,
             override_dir=self.override_dir,
             reload_schedule=self.reload_schedule,
+            schedule_path=self.schedule_path,
         )
         for command in commands:
             try:
@@ -153,6 +159,20 @@ class NotifierApp:
         self.reload_schedule()
         return format_min_interval_food_events(events, min_interval_minutes)
 
+    def shift_day(self, start_time: str, now: datetime | None = None) -> str:
+        current = now or datetime.now()
+        schedule_data = json.loads(self.schedule_path.read_text(encoding="utf-8"))
+        data = write_shifted_day_override(
+            override_dir=self.override_dir,
+            schedule_data=schedule_data,
+            day=current.date(),
+            start_time=start_time,
+        )
+        self.reload_schedule()
+        lines = [f"Перенес день на {start_time}.", "Сегодня:"]
+        lines.extend(f"- {event['time']} {event['title']}" for event in data.get("events", []))
+        return "\n".join(lines)
+
     def set_desktop_enabled(self, enabled: bool) -> None:
         self.settings = set_desktop_enabled(self.settings_path, enabled)
         self.desktop.enabled = self.settings.desktop_enabled
@@ -197,6 +217,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--recalc-min-interval", type=int, default=135, help="Minimum minutes between food events")
     parser.add_argument("--recalc-anchor", help="Today HH:MM anchor time for the already completed meal")
     parser.add_argument("--last-meal-number", type=int, default=1, help="Last completed meal number")
+    parser.add_argument("--shift-day", help="Create a one-day shifted schedule override, for example 10:00")
     return parser
 
 
@@ -238,6 +259,9 @@ def main() -> int:
                 anchor=anchor,
             )
         )
+        return 0
+    if args.shift_day:
+        print(app.shift_day(args.shift_day))
         return 0
     if args.once:
         app.run_once()

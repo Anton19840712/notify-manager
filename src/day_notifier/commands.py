@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, Protocol
 
 from day_notifier.inbox import append_inbox_item, read_inbox_items
-from day_notifier.overrides import format_min_interval_food_events, write_min_interval_food_override
+from day_notifier.overrides import (
+    format_min_interval_food_events,
+    write_min_interval_food_override,
+    write_shifted_day_override,
+)
 from day_notifier.schedule import Schedule, ScheduleEvent
 
 
@@ -30,6 +35,7 @@ class CommandContext:
     is_desktop_enabled: Callable[[], bool] | None = None
     override_dir: Path | None = None
     reload_schedule: Callable[[], None] | None = None
+    schedule_path: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -57,6 +63,9 @@ def handle_command(text: str, context: CommandContext) -> CommandResult:
     if command == "/recalc":
         return CommandResult(reply=_recalc(argument, context))
 
+    if command == "/shift":
+        return CommandResult(reply=_shift(argument, context))
+
     if command == "/inbox":
         if not argument.strip():
             return CommandResult(reply="Напиши текст после /inbox.")
@@ -79,7 +88,7 @@ def handle_command(text: str, context: CommandContext) -> CommandResult:
     return CommandResult(
         reply=(
             "Команды: /summary, /today, /next, /done, /snooze 10, "
-            "/recalc food 4, /desktop on|off|status, /inbox текст"
+            "/recalc food 4, /shift day 10:00, /desktop on|off|status, /inbox текст"
         )
     )
 
@@ -153,6 +162,29 @@ def _recalc(argument: str, context: CommandContext) -> str:
     return format_min_interval_food_events(events, min_interval_minutes)
 
 
+def _shift(argument: str, context: CommandContext) -> str:
+    parts = argument.strip().split()
+    if len(parts) != 2 or parts[0].lower() not in {"day", "день"} or not _looks_like_time(parts[1]):
+        return "Используй: /shift day 10:00."
+    if context.override_dir is None or context.schedule_path is None:
+        return "Перенос дня недоступен в этом режиме."
+
+    try:
+        schedule_data = json.loads(context.schedule_path.read_text(encoding="utf-8"))
+        data = write_shifted_day_override(
+            override_dir=context.override_dir,
+            schedule_data=schedule_data,
+            day=context.now().date(),
+            start_time=parts[1],
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        return f"Не смог перенести день: {exc}"
+
+    if context.reload_schedule is not None:
+        context.reload_schedule()
+    return _format_shifted_day_result(parts[1], data)
+
+
 def _format_event(prefix: str, event: ScheduleEvent) -> str:
     return f"{prefix}: {event.when:%H:%M} - {event.title}"
 
@@ -170,3 +202,20 @@ def _parse_interval_minutes(value: str) -> int:
         return int(value)
     hours, minutes = value.split(":", 1)
     return int(hours) * 60 + int(minutes)
+
+
+def _looks_like_time(value: str) -> bool:
+    parts = value.split(":", 1)
+    if len(parts) != 2:
+        return False
+    hour, minute = parts
+    if not hour.isdigit() or not minute.isdigit():
+        return False
+    return 0 <= int(hour) <= 23 and 0 <= int(minute) <= 59
+
+
+def _format_shifted_day_result(start_time: str, data: dict) -> str:
+    lines = [f"Перенес день на {start_time}.", "Сегодня:"]
+    for event in data.get("events", []):
+        lines.append(f"- {event['time']} {event['title']}")
+    return "\n".join(lines)

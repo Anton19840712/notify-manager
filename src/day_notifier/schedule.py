@@ -46,11 +46,15 @@ class Schedule:
         expanded: list[ScheduleEvent] = []
         override = self._day_overrides.get(day.isoformat(), {})
         suppressed_cycles = set(str(cycle_id) for cycle_id in override.get("suppress_cycles", []))
+        suppressed_events = set(str(event_id) for event_id in override.get("suppress_events", []))
 
         for event in self._events:
+            event_id = str(event["id"])
+            if event_id in suppressed_events:
+                continue
             expanded.append(
                 ScheduleEvent(
-                    event_id=str(event["id"]),
+                    event_id=event_id,
                     title=str(event["title"]),
                     message=str(event.get("message", event["title"])),
                     when=datetime.combine(day, _parse_time(str(event["time"]))),

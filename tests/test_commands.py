@@ -1,3 +1,4 @@
+import json
 import sys
 import tempfile
 import unittest
@@ -144,13 +145,79 @@ class CommandTests(unittest.TestCase):
             override_text = (context.override_dir / "2026-08-31.json").read_text(encoding="utf-8")
 
         self.assertEqual(reload_calls, ["reload"])
-        self.assertIn("Пересчитал питание с интервалом 2:15", result.reply)
+        self.assertIn("Пересчитал питание: 2:15 между концом еды и следующим приемом", result.reply)
+        self.assertIn("окно еды 10 мин", result.reply)
         self.assertIn("15:27 2 пп", result.reply)
-        self.assertIn("22:12 5 пп", result.reply)
+        self.assertIn("22:42 5 пп", result.reply)
         self.assertNotIn("пв", result.reply)
         self.assertIn("\"suppress_cycles\": [", override_text)
         self.assertIn("\"water-food-cycle\"", override_text)
         self.assertNotIn("пв", override_text)
+
+    def test_shift_day_command_writes_override_and_reloads_schedule(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            schedule_path = root / "schedule.json"
+            schedule_path.write_text(
+                json.dumps(
+                    {
+                        "events": [
+                            {"id": "wake-up", "time": "04:00", "title": "Подъем", "message": "Подъем"},
+                            {
+                                "id": "morning-block",
+                                "time": "04:01",
+                                "title": "Утренний блок: МП + кардио",
+                                "message": "МП",
+                            },
+                            {"id": "bedtime", "time": "22:00", "title": "Отбой", "message": "Сон"},
+                        ],
+                        "cycles": [
+                            {
+                                "id": "water-food-cycle",
+                                "start_time": "07:00",
+                                "period_minutes": 145,
+                                "count": 4,
+                                "items": [],
+                            }
+                        ],
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+            context = self.make_context(root / "inbox.md")
+            reload_calls = []
+            context.override_dir = root / "day_overrides"
+            context.schedule_path = schedule_path
+            context.reload_schedule = lambda: reload_calls.append("reload")
+            context.now = lambda: datetime(2026, 8, 31, 9, 0)
+
+            result = handle_command("/shift day 10:00", context)
+
+            override_text = (context.override_dir / "2026-08-31.json").read_text(encoding="utf-8")
+            data = json.loads(override_text)
+
+        self.assertEqual(reload_calls, ["reload"])
+        self.assertIn("Перенес день на 10:00", result.reply)
+        self.assertIn("10:00 Подъем", result.reply)
+        self.assertIn("12:25 2 пп", result.reply)
+        self.assertIn("14:50 3 пп", result.reply)
+        self.assertIn("water-food-cycle", data["suppress_cycles"])
+        self.assertIn("wake-up", data["suppress_events"])
+        self.assertNotIn("пв", override_text)
+
+    def test_shift_day_command_rejects_invalid_time_without_writing_override(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            context = self.make_context(root / "inbox.md")
+            context.override_dir = root / "day_overrides"
+            context.schedule_path = root / "missing.json"
+            context.now = lambda: datetime(2026, 8, 31, 9, 0)
+
+            result = handle_command("/shift day tomorrow", context)
+
+        self.assertIn("Используй: /shift day 10:00", result.reply)
+        self.assertFalse((root / "day_overrides").exists())
 
 
 if __name__ == "__main__":

@@ -1,3 +1,4 @@
+import json
 import sys
 import tempfile
 import unittest
@@ -11,6 +12,7 @@ from day_notifier.app import NotifierApp, format_startup_summary, select_due_eve
 from day_notifier.config import load_settings, set_desktop_enabled
 from day_notifier.schedule import Schedule, ScheduleEvent
 from day_notifier.state import JsonStateStore
+from day_notifier.telegram_client import TelegramCommand
 
 
 class ConfigStateAppTests(unittest.TestCase):
@@ -149,13 +151,55 @@ class ConfigStateAppTests(unittest.TestCase):
         self.assertEqual(calls[1], ("desktop", "1 пв", False))
         self.assertEqual(calls[2], ("state", "water-1"))
 
+    def test_process_telegram_shift_command_writes_day_override(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_project_files(root)
+            app = NotifierApp(root)
+            calls = []
+            app.telegram = RecordingTelegram(
+                calls,
+                commands=[TelegramCommand(update_id=10, text="/shift day 10:00")],
+            )
+
+            app.process_telegram_commands()
+
+            override_files = list((root / "data" / "day_overrides").glob("*.json"))
+            self.assertEqual(len(override_files), 1)
+            override_text = override_files[0].read_text(encoding="utf-8")
+
+        self.assertIn("Перенес день на 10:00", calls[-1][1])
+        self.assertIn('"suppress_events"', override_text)
+        self.assertNotIn("пв", override_text)
+
+    def test_shift_day_writes_override_and_returns_summary(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_project_files(root)
+            app = NotifierApp(root)
+
+            result = app.shift_day("10:00", now=datetime(2026, 8, 31, 9, 0))
+
+            override_text = (root / "data" / "day_overrides" / "2026-08-31.json").read_text(
+                encoding="utf-8"
+            )
+
+        self.assertIn("Перенес день на 10:00", result)
+        self.assertIn("12:25 2 пп", result)
+        self.assertIn('"suppress_events"', override_text)
+
 
 class RecordingTelegram:
-    def __init__(self, calls):
+    def __init__(self, calls, commands=None):
         self.calls = calls
+        self.commands = commands or []
 
     def send_message(self, text):
         self.calls.append(("telegram", text))
+
+    def get_commands(self, offset=None):
+        self.calls.append(("get_commands", offset))
+        return self.commands
 
 
 class RecordingDesktop:
@@ -174,6 +218,45 @@ class RecordingState:
 
     def mark_notified(self, event):
         self.calls.append(("state", event.event_id))
+
+
+def write_project_files(root: Path) -> None:
+    (root / "config").mkdir(parents=True)
+    (root / "data").mkdir(parents=True)
+    (root / "config" / "schedule.json").write_text(
+        json.dumps(
+            {
+                "events": [
+                    {"id": "wake-up", "time": "04:00", "title": "Подъем", "message": "Подъем"},
+                    {
+                        "id": "morning-block",
+                        "time": "04:01",
+                        "title": "Утренний блок: МП + кардио",
+                        "message": "МП",
+                    },
+                    {"id": "bedtime", "time": "22:00", "title": "Отбой", "message": "Сон"},
+                ],
+                "cycles": [
+                    {
+                        "id": "water-food-cycle",
+                        "start_time": "07:00",
+                        "period_minutes": 145,
+                        "count": 4,
+                        "items": [
+                            {
+                                "offset_minutes": 0,
+                                "id_template": "water-{n}",
+                                "title_template": "{n} пв",
+                                "message_template": "{n} прием воды",
+                            }
+                        ],
+                    }
+                ],
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
 
 
 if __name__ == "__main__":
