@@ -88,7 +88,7 @@ Document the local audio path and wake-up trigger.
 
 Run tests, compileall, diff check, TODO/FIXME scan, and secret scan.
 
-- [ ] **Step 4: Commit, push, restart**
+- [x] **Step 4: Commit, push, restart**
 
 Commit mirror and private changes, push private `origin/main`, restart notifier, then check status and logs.
 
