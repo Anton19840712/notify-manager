@@ -83,20 +83,14 @@
     {
       "id": "water-food-cycle",
       "start_time": "07:00",
-      "period_minutes": 145,
+      "period_minutes": 135,
       "count": 4,
       "items": [
         {
           "offset_minutes": 0,
-          "id_template": "water-{n}",
-          "title_template": "{n} пв",
-          "message_template": "{n} прием воды. Выпей воду, затем 15 минут до пищи."
-        },
-        {
-          "offset_minutes": 15,
           "id_template": "meal-{n}",
           "title_template": "{n} пп",
-          "message_template": "{n} прием пищи. Контейнер, без хаотичного телефона."
+          "message_template": "{n} прием пищи. Контейнер, без хаотичного телефона. Воду пить поверх приема и между приемами."
         }
       ]
     }

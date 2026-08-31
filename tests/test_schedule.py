@@ -91,10 +91,29 @@ class ScheduleTests(unittest.TestCase):
                 ("day-optimization", "Оптимизация дня", "04:40"),
                 ("target-engineering-article", "Целевая инженерная статья", "05:00"),
                 ("microservices-reading", "Микросервисы", "06:00"),
-                ("water-1", "1 пв", "07:00"),
-                ("meal-1", "1 пп", "07:15"),
+                ("meal-1", "1 пп", "07:00"),
                 ("monitoring-reading", "Мониторинг", "07:25"),
                 ("morning-buffer", "Буфер / быт / подготовка к работе", "08:25"),
+                ("meal-2", "2 пп", "09:15"),
+            ],
+        )
+
+    def test_default_schedule_uses_meal_only_minimum_interval_cycle(self):
+        schedule = Schedule.from_dict(
+            json.loads((ROOT / "config" / "schedule.json").read_text(encoding="utf-8"))
+        )
+
+        events = schedule.events_for_date(date(2026, 8, 30))
+        meal_events = [event for event in events if event.title.endswith("пп")]
+
+        self.assertFalse(any(event.title.endswith("пв") for event in events))
+        self.assertEqual(
+            [(event.event_id, event.title, event.when.strftime("%H:%M")) for event in meal_events],
+            [
+                ("meal-1", "1 пп", "07:00"),
+                ("meal-2", "2 пп", "09:15"),
+                ("meal-3", "3 пп", "11:30"),
+                ("meal-4", "4 пп", "13:45"),
             ],
         )
 
