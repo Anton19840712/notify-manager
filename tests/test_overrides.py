@@ -12,11 +12,12 @@ from day_notifier.overrides import (
     build_compressed_food_events,
     build_min_interval_food_events,
     build_shifted_day_override,
+    write_meal_done_override,
     write_compressed_food_override,
     write_min_interval_food_override,
     write_shifted_day_override,
 )
-from day_notifier.schedule import load_day_overrides
+from day_notifier.schedule import Schedule, load_day_overrides
 
 
 class OverrideTests(unittest.TestCase):
@@ -76,6 +77,96 @@ class OverrideTests(unittest.TestCase):
         self.assertEqual(data["suppress_cycles"], ["water-food-cycle"])
         self.assertEqual([event["title"] for event in data["events"]], ["2 пп", "3 пп", "4 пп", "5 пп"])
         self.assertNotIn("пв", override_text)
+
+    def test_write_meal_done_override_recalculates_remaining_meals_from_completion_time(self):
+        schedule = Schedule.from_dict(
+            {
+                "events": [],
+                "cycles": [
+                    {
+                        "id": "water-food-cycle",
+                        "start_time": "07:00",
+                        "period_minutes": 145,
+                        "count": 4,
+                        "items": [
+                            {
+                                "offset_minutes": 15,
+                                "id_template": "meal-{n}",
+                                "title_template": "{n} пп",
+                                "message_template": "{n} прием пищи",
+                            }
+                        ],
+                    }
+                ],
+            }
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            override_dir = Path(temp_dir) / "day_overrides"
+
+            events = write_meal_done_override(
+                override_dir=override_dir,
+                schedule=schedule,
+                day=datetime(2026, 8, 31).date(),
+                completed_meal_number=2,
+                completed_at=datetime(2026, 8, 31, 12, 25),
+            )
+
+            data = json.loads((override_dir / "2026-08-31.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(
+            [(event.event_id, event.title, event.when.strftime("%H:%M")) for event in events],
+            [
+                ("override-meal-3", "3 пп", "14:40"),
+                ("override-meal-4", "4 пп", "17:05"),
+            ],
+        )
+        self.assertEqual(data["suppress_cycles"], ["water-food-cycle"])
+        self.assertEqual([event["title"] for event in data["events"]], ["3 пп", "4 пп"])
+        self.assertNotIn("пв", json.dumps(data, ensure_ascii=False))
+
+    def test_write_meal_done_override_preserves_shifted_non_food_events(self):
+        schedule_data = json.loads((ROOT / "config" / "schedule.json").read_text(encoding="utf-8"))
+        with tempfile.TemporaryDirectory() as temp_dir:
+            override_dir = Path(temp_dir) / "day_overrides"
+            write_shifted_day_override(
+                override_dir=override_dir,
+                schedule_data=schedule_data,
+                day=datetime(2026, 8, 31).date(),
+                start_time="10:00",
+            )
+            schedule = Schedule.from_dict(schedule_data, day_overrides=load_day_overrides(override_dir))
+
+            events = write_meal_done_override(
+                override_dir=override_dir,
+                schedule=schedule,
+                day=datetime(2026, 8, 31).date(),
+                completed_meal_number=2,
+                completed_at=datetime(2026, 8, 31, 12, 25),
+            )
+
+            data = json.loads((override_dir / "2026-08-31.json").read_text(encoding="utf-8"))
+
+        self.assertEqual([event.title for event in events], ["3 пп", "4 пп"])
+        self.assertIn("wake-up", data["suppress_events"])
+        self.assertIn(
+            {
+                "id": "wake-up",
+                "time": "10:00",
+                "title": "Подъем",
+                "message": "Подъем. Минута на одежду, телефон не открывать фоном.",
+            },
+            data["events"],
+        )
+        self.assertNotIn("meal-3", [event["id"] for event in data["events"]])
+        self.assertIn(
+            {
+                "id": "override-meal-3",
+                "time": "14:40",
+                "title": "3 пп",
+                "message": "Пересчитанный день: 3 прием пищи. Воду пить поверх приема и между приемами.",
+            },
+            data["events"],
+        )
 
     def test_build_shifted_day_override_keeps_sleep_fixed_and_uses_emergency_meals(self):
         schedule_data = json.loads((ROOT / "config" / "schedule.json").read_text(encoding="utf-8"))

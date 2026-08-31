@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
 
-from day_notifier.schedule import ScheduleEvent
+from day_notifier.schedule import Schedule, ScheduleEvent
 
 
 FOOD_CYCLE_ID = "water-food-cycle"
 DEFAULT_MIN_MEAL_INTERVAL_MINUTES = 135
 DEFAULT_EATING_WINDOW_MINUTES = 10
+MEAL_TITLE_PATTERN = re.compile(r"^(\d+)\s*пп$", re.IGNORECASE)
+FOOD_EVENT_ID_PATTERN = re.compile(r"^(override-)?(meal|water)-\d+$", re.IGNORECASE)
 SHIFTED_DAY_BASE_EVENT_ID = "wake-up"
 SHIFTED_DAY_EVENT_IDS = [
     "wake-up",
@@ -84,6 +87,56 @@ def write_min_interval_food_override(
 
     override_dir.mkdir(parents=True, exist_ok=True)
     path = override_dir / f"{anchor.date().isoformat()}.json"
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return events
+
+
+def write_meal_done_override(
+    override_dir: Path,
+    schedule: Schedule,
+    day: date,
+    completed_meal_number: int,
+    completed_at: datetime,
+    min_interval_minutes: int = DEFAULT_MIN_MEAL_INTERVAL_MINUTES,
+    eating_minutes: int = DEFAULT_EATING_WINDOW_MINUTES,
+) -> list[ScheduleEvent]:
+    if completed_meal_number < 1:
+        raise ValueError("meal number must be at least 1")
+
+    total_meals = max([completed_meal_number] + _active_meal_numbers(schedule, day))
+    remaining_meals = total_meals - completed_meal_number
+    events = (
+        build_min_interval_food_events(
+            anchor=completed_at,
+            remaining_meals=remaining_meals,
+            min_interval_minutes=min_interval_minutes,
+            last_meal_number=completed_meal_number,
+            eating_minutes=eating_minutes,
+        )
+        if remaining_meals > 0
+        else []
+    )
+
+    existing = _load_override(override_dir, day)
+    suppress_cycles = list(dict.fromkeys([*existing.get("suppress_cycles", []), FOOD_CYCLE_ID]))
+    preserved_events = [
+        event
+        for event in existing.get("events", [])
+        if not _is_food_override_event(event)
+    ]
+    data = {
+        "date": day.isoformat(),
+        "suppress_cycles": suppress_cycles,
+        "events": sorted(
+            [*preserved_events, *[_event_to_override_dict(event) for event in events]],
+            key=lambda event: event["time"],
+        ),
+    }
+    if "suppress_events" in existing:
+        data["suppress_events"] = existing["suppress_events"]
+
+    override_dir.mkdir(parents=True, exist_ok=True)
+    path = override_dir / f"{day.isoformat()}.json"
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return events
 
@@ -297,6 +350,40 @@ def _event_to_override_dict(event: ScheduleEvent) -> dict[str, str]:
         "title": event.title,
         "message": event.message,
     }
+
+
+def _active_meal_numbers(schedule: Schedule, day: date) -> list[int]:
+    numbers = []
+    for event in schedule.events_for_date(day):
+        meal_number = _meal_number_from_event(event)
+        if meal_number is not None:
+            numbers.append(meal_number)
+    return numbers
+
+
+def _meal_number_from_event(event: ScheduleEvent) -> int | None:
+    title_match = MEAL_TITLE_PATTERN.match(event.title.strip())
+    if title_match:
+        return int(title_match.group(1))
+    id_match = re.match(r"^(?:override-)?meal-(\d+)$", event.event_id, re.IGNORECASE)
+    if id_match:
+        return int(id_match.group(1))
+    return None
+
+
+def _is_food_override_event(event: dict) -> bool:
+    event_id = str(event.get("id", ""))
+    title = str(event.get("title", ""))
+    if FOOD_EVENT_ID_PATTERN.match(event_id):
+        return True
+    return bool(re.match(r"^\d+\s*п[вп]$", title.strip(), re.IGNORECASE))
+
+
+def _load_override(override_dir: Path, day: date) -> dict:
+    path = override_dir / f"{day.isoformat()}.json"
+    if not path.exists():
+        return {"date": day.isoformat(), "suppress_cycles": [], "events": []}
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _parse_time(value: str) -> time:

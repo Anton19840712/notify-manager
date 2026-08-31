@@ -82,6 +82,28 @@ class TelegramClientTests(unittest.TestCase):
         self.assertEqual(commands[0].message_id, 77)
         self.assertEqual(commands[0].text, "отбой")
 
+    def test_get_commands_accepts_plain_meal_done_and_ignores_unrelated_text(self):
+        transport = FakeTransport(
+            {
+                "ok": True,
+                "result": [
+                    {
+                        "update_id": 10,
+                        "message": {"message_id": 77, "chat": {"id": 456}, "text": "2 mi done"},
+                    },
+                    {
+                        "update_id": 11,
+                        "message": {"message_id": 78, "chat": {"id": 456}, "text": "просто мысль"},
+                    },
+                ],
+            }
+        )
+        client = TelegramClient("123:abc", "456", transport=transport)
+
+        commands = client.get_commands()
+
+        self.assertEqual([(command.update_id, command.text, command.message_id) for command in commands], [(10, "2 mi done", 77)])
+
     def test_delete_messages_uses_batch_api(self):
         transport = FakeTransport({"ok": True, "result": True})
         client = TelegramClient("123:abc", "456", transport=transport)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -9,10 +10,18 @@ from typing import Callable, Protocol
 from day_notifier.inbox import append_inbox_item, read_inbox_items
 from day_notifier.overrides import (
     format_min_interval_food_events,
+    write_meal_done_override,
     write_min_interval_food_override,
     write_shifted_day_override,
 )
 from day_notifier.schedule import Schedule, ScheduleEvent
+
+
+MEAL_DONE_USAGE = "Используй: 2 mi done, 2 pp done, 2 пп done или /mi 2 done."
+MEAL_DONE_PATTERNS = [
+    re.compile(r"^(\d+)\s+(?:mi|pp|пп)\s+done$", re.IGNORECASE),
+    re.compile(r"^/mi\s+(\d+)\s+done$", re.IGNORECASE),
+]
 
 
 class RuntimeState(Protocol):
@@ -45,7 +54,12 @@ class CommandResult:
 
 
 def handle_command(text: str, context: CommandContext) -> CommandResult:
-    command, _, argument = text.strip().partition(" ")
+    stripped = text.strip()
+    meal_done_number = _parse_meal_done_number(stripped)
+    if meal_done_number is not None:
+        return CommandResult(reply=_meal_done(meal_done_number, context))
+
+    command, _, argument = stripped.partition(" ")
     command = command.lower()
 
     if command in {"/отбой", "отбой"}:
@@ -94,7 +108,7 @@ def handle_command(text: str, context: CommandContext) -> CommandResult:
     return CommandResult(
         reply=(
             "Команды: /summary, /today, /next, /done, /snooze 10, "
-            "/recalc food 4, /shift day 10:00, /отбой, /desktop on|off|status, /inbox текст"
+            "/recalc food 4, 2 mi done, /shift day 10:00, /отбой, /desktop on|off|status, /inbox текст"
         )
     )
 
@@ -168,6 +182,29 @@ def _recalc(argument: str, context: CommandContext) -> str:
     return format_min_interval_food_events(events, min_interval_minutes)
 
 
+def _meal_done(meal_number: int, context: CommandContext) -> str:
+    if meal_number < 1:
+        return MEAL_DONE_USAGE
+    if context.override_dir is None:
+        return "Пересчет питания недоступен в этом режиме."
+
+    completed_at = context.now()
+    try:
+        events = write_meal_done_override(
+            override_dir=context.override_dir,
+            schedule=context.schedule,
+            day=completed_at.date(),
+            completed_meal_number=meal_number,
+            completed_at=completed_at,
+        )
+    except ValueError as exc:
+        return f"Не смог пересчитать питание: {exc}"
+
+    if context.reload_schedule is not None:
+        context.reload_schedule()
+    return _format_meal_done_result(meal_number, completed_at, events)
+
+
 def _shift(argument: str, context: CommandContext) -> str:
     parts = argument.strip().split()
     if len(parts) != 2 or parts[0].lower() not in {"day", "день"} or not _looks_like_time(parts[1]):
@@ -210,6 +247,14 @@ def _parse_interval_minutes(value: str) -> int:
     return int(hours) * 60 + int(minutes)
 
 
+def _parse_meal_done_number(text: str) -> int | None:
+    for pattern in MEAL_DONE_PATTERNS:
+        match = pattern.match(text)
+        if match:
+            return int(match.group(1))
+    return None
+
+
 def _looks_like_time(value: str) -> bool:
     parts = value.split(":", 1)
     if len(parts) != 2:
@@ -224,4 +269,18 @@ def _format_shifted_day_result(start_time: str, data: dict) -> str:
     lines = [f"Перенес день на {start_time}.", "Сегодня:"]
     for event in data.get("events", []):
         lines.append(f"- {event['time']} {event['title']}")
+    return "\n".join(lines)
+
+
+def _format_meal_done_result(
+    meal_number: int,
+    completed_at: datetime,
+    events: list[ScheduleEvent],
+) -> str:
+    lines = [f"Принял: {meal_number} пп завершен в {completed_at:%H:%M}."]
+    if not events:
+        lines.append("Остаток питания на сегодня не нужен.")
+        return "\n".join(lines)
+    lines.append("Пересчитал остаток:")
+    lines.extend(f"- {event.when:%H:%M} {event.title}" for event in events)
     return "\n".join(lines)

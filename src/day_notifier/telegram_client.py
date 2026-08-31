@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import re
 import urllib.request
 from dataclasses import dataclass
 from typing import Any, Callable
 
 
 Transport = Callable[[str, bytes], dict[str, Any]]
+MEAL_DONE_TEXT_PATTERN = re.compile(r"^\d+\s+(?:mi|pp|пп)\s+done$", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -45,7 +47,7 @@ class TelegramClient:
             message = item.get("message") or {}
             chat = message.get("chat") or {}
             text = str(message.get("text") or "")
-            if str(chat.get("id")) == self.chat_id and (text.startswith("/") or text.lower() == "отбой"):
+            if str(chat.get("id")) == self.chat_id and _is_supported_command_text(text):
                 raw_message_id = message.get("message_id")
                 commands.append(
                     TelegramCommand(
@@ -85,6 +87,11 @@ class TelegramClient:
 def _chunks(values: list[int], size: int):
     for index in range(0, len(values), size):
         yield values[index : index + size]
+
+
+def _is_supported_command_text(text: str) -> bool:
+    stripped = text.strip()
+    return stripped.startswith("/") or stripped.lower() == "отбой" or bool(MEAL_DONE_TEXT_PATTERN.match(stripped))
 
 
 def _urllib_transport(url: str, payload: bytes) -> dict[str, Any]:

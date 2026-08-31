@@ -51,6 +51,35 @@ class CommandTests(unittest.TestCase):
             now=lambda: datetime(2026, 8, 30, 6, 30),
         )
 
+    def make_food_schedule(self):
+        return Schedule.from_dict(
+            {
+                "events": [],
+                "cycles": [
+                    {
+                        "id": "water-food-cycle",
+                        "start_time": "07:00",
+                        "period_minutes": 145,
+                        "count": 4,
+                        "items": [
+                            {
+                                "offset_minutes": 0,
+                                "id_template": "water-{n}",
+                                "title_template": "{n} пв",
+                                "message_template": "{n} прием воды",
+                            },
+                            {
+                                "offset_minutes": 15,
+                                "id_template": "meal-{n}",
+                                "title_template": "{n} пп",
+                                "message_template": "{n} прием пищи",
+                            },
+                        ],
+                    }
+                ],
+            }
+        )
+
     def test_next_command_returns_next_event(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             context = self.make_context(Path(temp_dir) / "inbox.md")
@@ -153,6 +182,51 @@ class CommandTests(unittest.TestCase):
         self.assertIn("\"suppress_cycles\": [", override_text)
         self.assertIn("\"water-food-cycle\"", override_text)
         self.assertNotIn("пв", override_text)
+
+    def test_meal_done_command_recalculates_remaining_food_from_now(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+            reload_calls = []
+            context.override_dir = Path(temp_dir) / "day_overrides"
+            context.reload_schedule = lambda: reload_calls.append("reload")
+            context.schedule = self.make_food_schedule()
+            context.now = lambda: datetime(2026, 8, 31, 12, 25)
+
+            result = handle_command("2 mi done", context)
+
+            override_text = (context.override_dir / "2026-08-31.json").read_text(encoding="utf-8")
+
+        self.assertEqual(reload_calls, ["reload"])
+        self.assertIn("Принял: 2 пп завершен в 12:25.", result.reply)
+        self.assertIn("Пересчитал остаток:", result.reply)
+        self.assertIn("14:40 3 пп", result.reply)
+        self.assertIn("17:05 4 пп", result.reply)
+        self.assertNotIn("пв", result.reply)
+        self.assertIn("\"water-food-cycle\"", override_text)
+        self.assertNotIn("пв", override_text)
+
+    def test_meal_done_command_accepts_aliases(self):
+        for text in ["2 pp done", "2 пп done", "/mi 2 done"]:
+            with self.subTest(text=text):
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    context = self.make_context(Path(temp_dir) / "inbox.md")
+                    context.override_dir = Path(temp_dir) / "day_overrides"
+                    context.schedule = self.make_food_schedule()
+                    context.now = lambda: datetime(2026, 8, 31, 12, 25)
+
+                    result = handle_command(text, context)
+
+                self.assertIn("Принял: 2 пп завершен в 12:25.", result.reply)
+
+    def test_meal_done_command_rejects_invalid_meal_number(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+            context.override_dir = Path(temp_dir) / "day_overrides"
+
+            result = handle_command("0 mi done", context)
+
+        self.assertIn("Используй: 2 mi done", result.reply)
+        self.assertFalse(context.override_dir.exists())
 
     def test_shift_day_command_writes_override_and_reloads_schedule(self):
         with tempfile.TemporaryDirectory() as temp_dir:

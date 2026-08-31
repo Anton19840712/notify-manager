@@ -122,6 +122,7 @@ This writes a local one-day override to `data/day_overrides/`. Override files ar
 - `/done` - mark last delivered reminder as done.
 - `/snooze 10` - delay last or next reminder by 10 minutes.
 - `/recalc food 4` - recalculate today's remaining food reminders with a 10-minute eating window and a 2:15 gap after eating.
+- `2 mi done`, `2 pp done`, `2 пп done`, or `/mi 2 done` - mark meal 2 as completed now and recalculate today's remaining meal reminders.
 - `/shift day 10:00` - rebuild today's start-relative reminders from 10:00; tomorrow keeps the base flow.
 - `/отбой` or `отбой` - delete tracked bot-chat messages and leave one bedtime confirmation.
 - `/desktop on`, `/desktop off`, `/desktop status` - control center-screen MsgBox reminders.
