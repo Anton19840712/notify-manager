@@ -4,7 +4,7 @@
 
 **Goal:** Add an `отбой` Telegram command that deletes tracked notifier chat messages and leaves the bot chat clean for the next day.
 
-**Architecture:** Track Telegram `message_id` values in `data/state.json` whenever the app observes an incoming command or sends an outgoing message. Add Telegram client delete helpers, then route `/отбой` and `отбой` through command handling with a cleanup callback supplied by `NotifierApp`. Keep deletion best-effort because Telegram can reject old or already-deleted messages.
+**Architecture:** Track Telegram `message_id` values in `data/state.json` whenever the app observes an incoming command or sends an outgoing message. Add Telegram client delete helpers, then route `/отбой` and `отбой` through command handling with a cleanup callback supplied by `NotifierApp`. The cleanup callback deletes and clears tracked ids, then returns confirmation text; the existing command-reply path sends that text once and tracks it as the first message of the next cycle.
 
 **Tech Stack:** Python standard library, `unittest`, Telegram Bot API `sendMessage`, `deleteMessages`, and `deleteMessage`, existing JSON state store.
 
@@ -434,7 +434,7 @@ Add tests:
 
         self.assertEqual([item["direction"] for item in app.state.telegram_messages], ["incoming", "outgoing"])
 
-    def test_cleanup_telegram_chat_deletes_tracked_messages_and_tracks_confirmation(self):
+    def test_cleanup_telegram_chat_deletes_tracked_messages_and_returns_confirmation(self):
         calls = []
         app = NotifierApp.__new__(NotifierApp)
         app.telegram = RecordingTelegram(calls)
@@ -446,8 +446,7 @@ Add tests:
 
         self.assertIn("Отбой. Чат очищен", result)
         self.assertIn(("delete_messages", [10, 11]), calls)
-        self.assertEqual(len(app.state.telegram_messages), 1)
-        self.assertEqual(app.state.telegram_messages[0]["direction"], "outgoing")
+        self.assertEqual(app.state.telegram_messages, [])
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -503,9 +502,7 @@ Add:
             return "Отбой. Пока нечего очищать: бот еще не накопил отслеживаемые сообщения."
         summary = self.telegram.delete_messages(message_ids)
         self.state.clear_telegram_messages()
-        text = f"Отбой. Чат очищен: удалено {summary.deleted}, пропущено {summary.failed}."
-        self.send_telegram_message(text, track=True)
-        return text
+        return f"Отбой. Чат очищен: удалено {summary.deleted}, пропущено {summary.failed}."
 ```
 
 - [ ] **Step 6: Run focused tests**
@@ -650,6 +647,6 @@ Do not send a live `отбой` smoke command during implementation because it w
 
 ## Self-Review
 
-- Spec coverage: the plan covers tracked message ids, incoming/outgoing directions, capped state, batch delete, per-message fallback, `/отбой`, plain `отбой`, final confirmation, Telegram-disabled behavior, README notes, private sync, push, and restart.
+- Spec coverage: the plan covers tracked message ids, incoming/outgoing directions, capped state, batch delete, per-message fallback, `/отбой`, plain `отбой`, single final confirmation through the normal reply path, Telegram-disabled behavior, README notes, private sync, push, and restart.
 - Placeholder scan: no `TBD`, `TODO`, "implement later", or vague edge handling remains.
 - Type consistency: `TelegramCommand.message_id`, `DeleteSummary`, `telegram_messages`, `track_telegram_message`, `clear_telegram_messages`, `telegram_message_ids`, and `cleanup_telegram_chat` are named consistently across tasks.

@@ -43,13 +43,13 @@ When `отбой` runs:
 2. Delete them through Telegram Bot API in batches where possible.
 3. Ignore per-message deletion failures caused by age, prior deletion, or Telegram permissions.
 4. Clear successfully attempted tracked ids from state so the next day starts clean.
-5. Send one final confirmation message such as:
+5. Return one final confirmation text, which the normal command-reply path sends once:
 
 ```text
 Отбой. Чат очищен: удалено 37, пропущено 2.
 ```
 
-The final confirmation stays in the chat. It becomes the first tracked outgoing message for the next cleanup cycle.
+The final confirmation stays in the chat. Because it is sent through the normal reply path, it becomes the first tracked outgoing message for the next cleanup cycle.
 
 ## API Shape
 
