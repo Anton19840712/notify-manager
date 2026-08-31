@@ -131,7 +131,7 @@ class CommandTests(unittest.TestCase):
 
         self.assertIn("выключены", result.reply)
 
-    def test_recalc_food_command_writes_compressed_day_override(self):
+    def test_recalc_food_command_writes_min_interval_day_override_without_water(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             context = self.make_context(Path(temp_dir) / "inbox.md")
             reload_calls = []
@@ -144,11 +144,13 @@ class CommandTests(unittest.TestCase):
             override_text = (context.override_dir / "2026-08-31.json").read_text(encoding="utf-8")
 
         self.assertEqual(reload_calls, ["reload"])
-        self.assertIn("Сжал питание до 20:45", result.reply)
-        self.assertIn("14:50 2 пв", result.reply)
-        self.assertIn("20:45 5 пп", result.reply)
+        self.assertIn("Пересчитал питание с интервалом 2:15", result.reply)
+        self.assertIn("15:27 2 пп", result.reply)
+        self.assertIn("22:12 5 пп", result.reply)
+        self.assertNotIn("пв", result.reply)
         self.assertIn("\"suppress_cycles\": [", override_text)
         self.assertIn("\"water-food-cycle\"", override_text)
+        self.assertNotIn("пв", override_text)
 
 
 if __name__ == "__main__":

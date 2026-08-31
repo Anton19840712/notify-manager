@@ -103,7 +103,7 @@ Control the desktop channel:
 Recalculate today's food cycle without changing the base schedule:
 
 ```powershell
-.\scripts\start-notifier.ps1 -RecalcFood 4 -RecalcAnchor 13:12 -RecalcCutoff 20:45
+.\scripts\start-notifier.ps1 -RecalcFood 4 -RecalcAnchor 13:12 -RecalcMinInterval 135
 ```
 
 This writes a local one-day override to `data/day_overrides/`. Override files are ignored by git.
@@ -115,7 +115,7 @@ This writes a local one-day override to `data/day_overrides/`. Override files ar
 - `/next` - next reminder.
 - `/done` - mark last delivered reminder as done.
 - `/snooze 10` - delay last or next reminder by 10 minutes.
-- `/recalc food 4` - compress today's remaining food reminders until `20:45`.
+- `/recalc food 4` - recalculate today's remaining food reminders with a 2:15 minimum interval.
 - `/desktop on`, `/desktop off`, `/desktop status` - control center-screen MsgBox reminders.
 - `/inbox text` - append a small task to `data/inbox.md`.
 

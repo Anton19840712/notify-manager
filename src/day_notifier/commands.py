@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Callable, Protocol
 
 from day_notifier.inbox import append_inbox_item, read_inbox_items
-from day_notifier.overrides import format_recalculated_food_events, write_compressed_food_override
+from day_notifier.overrides import format_min_interval_food_events, write_min_interval_food_override
 from day_notifier.schedule import Schedule, ScheduleEvent
 
 
@@ -130,19 +130,19 @@ def _desktop(argument: str, context: CommandContext) -> str:
 def _recalc(argument: str, context: CommandContext) -> str:
     parts = argument.strip().split()
     if len(parts) < 2 or parts[0].lower() not in {"food", "meal", "meals", "еда", "питание"}:
-        return "Используй: /recalc food 4 или /recalc food 4 20:45."
+        return "Используй: /recalc food 4 или /recalc food 4 2:15."
     if context.override_dir is None:
         return "Пересчет дня недоступен в этом режиме."
 
     try:
         remaining_meals = int(parts[1])
-        cutoff_time = parts[2] if len(parts) >= 3 else "20:45"
+        min_interval_minutes = _parse_interval_minutes(parts[2]) if len(parts) >= 3 else 135
         last_meal_number = int(parts[3]) if len(parts) >= 4 else 1
-        events = write_compressed_food_override(
+        events = write_min_interval_food_override(
             override_dir=context.override_dir,
             anchor=context.now(),
             remaining_meals=remaining_meals,
-            cutoff_time=cutoff_time,
+            min_interval_minutes=min_interval_minutes,
             last_meal_number=last_meal_number,
         )
     except ValueError as exc:
@@ -150,7 +150,7 @@ def _recalc(argument: str, context: CommandContext) -> str:
 
     if context.reload_schedule is not None:
         context.reload_schedule()
-    return format_recalculated_food_events(events, cutoff_time)
+    return format_min_interval_food_events(events, min_interval_minutes)
 
 
 def _format_event(prefix: str, event: ScheduleEvent) -> str:
@@ -163,3 +163,10 @@ def _parse_snooze_minutes(argument: str) -> int:
     if minutes < 1 or minutes > 240:
         raise ValueError("Snooze must be between 1 and 240 minutes.")
     return minutes
+
+
+def _parse_interval_minutes(value: str) -> int:
+    if ":" not in value:
+        return int(value)
+    hours, minutes = value.split(":", 1)
+    return int(hours) * 60 + int(minutes)

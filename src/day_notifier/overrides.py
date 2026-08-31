@@ -8,6 +8,64 @@ from day_notifier.schedule import ScheduleEvent
 
 
 FOOD_CYCLE_ID = "water-food-cycle"
+DEFAULT_MIN_MEAL_INTERVAL_MINUTES = 135
+
+
+def build_min_interval_food_events(
+    anchor: datetime,
+    remaining_meals: int,
+    min_interval_minutes: int = DEFAULT_MIN_MEAL_INTERVAL_MINUTES,
+    last_meal_number: int = 1,
+) -> list[ScheduleEvent]:
+    if remaining_meals < 1:
+        raise ValueError("remaining meals must be at least 1")
+    if min_interval_minutes < 1:
+        raise ValueError("minimum interval must be at least 1 minute")
+    if last_meal_number < 0:
+        raise ValueError("last meal number must be 0 or greater")
+
+    anchor_minute = anchor.replace(second=0, microsecond=0)
+    events: list[ScheduleEvent] = []
+    for index in range(1, remaining_meals + 1):
+        meal_number = last_meal_number + index
+        meal_at = anchor_minute + timedelta(minutes=min_interval_minutes * index)
+        events.append(
+            ScheduleEvent(
+                event_id=f"override-meal-{meal_number}",
+                title=f"{meal_number} пп",
+                message=(
+                    f"Пересчитанный день: {meal_number} прием пищи. "
+                    "Воду пить поверх приема и между приемами."
+                ),
+                when=meal_at,
+            )
+        )
+    return events
+
+
+def write_min_interval_food_override(
+    override_dir: Path,
+    anchor: datetime,
+    remaining_meals: int,
+    min_interval_minutes: int = DEFAULT_MIN_MEAL_INTERVAL_MINUTES,
+    last_meal_number: int = 1,
+) -> list[ScheduleEvent]:
+    events = build_min_interval_food_events(
+        anchor=anchor,
+        remaining_meals=remaining_meals,
+        min_interval_minutes=min_interval_minutes,
+        last_meal_number=last_meal_number,
+    )
+    data = {
+        "date": anchor.date().isoformat(),
+        "suppress_cycles": [FOOD_CYCLE_ID],
+        "events": [_event_to_override_dict(event) for event in events],
+    }
+
+    override_dir.mkdir(parents=True, exist_ok=True)
+    path = override_dir / f"{anchor.date().isoformat()}.json"
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return events
 
 
 def build_compressed_food_events(
@@ -93,6 +151,12 @@ def format_recalculated_food_events(events: list[ScheduleEvent], cutoff_time: st
     return "\n".join(lines)
 
 
+def format_min_interval_food_events(events: list[ScheduleEvent], min_interval_minutes: int) -> str:
+    lines = [f"Пересчитал питание с интервалом {_format_interval(min_interval_minutes)}:"]
+    lines.extend(f"- {event.when:%H:%M} {event.title}" for event in events)
+    return "\n".join(lines)
+
+
 def _event_to_override_dict(event: ScheduleEvent) -> dict[str, str]:
     return {
         "id": event.event_id,
@@ -109,3 +173,8 @@ def _parse_time(value: str) -> time:
 
 def _round_half_up(value: float) -> int:
     return int(value + 0.5)
+
+
+def _format_interval(minutes: int) -> str:
+    hours, rest = divmod(minutes, 60)
+    return f"{hours}:{rest:02d}"

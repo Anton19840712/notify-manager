@@ -8,11 +8,56 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from day_notifier.overrides import build_compressed_food_events, write_compressed_food_override
+from day_notifier.overrides import (
+    build_compressed_food_events,
+    build_min_interval_food_events,
+    write_compressed_food_override,
+    write_min_interval_food_override,
+)
 from day_notifier.schedule import load_day_overrides
 
 
 class OverrideTests(unittest.TestCase):
+    def test_builds_meal_only_food_events_with_minimum_interval(self):
+        events = build_min_interval_food_events(
+            anchor=datetime(2026, 8, 31, 13, 12),
+            remaining_meals=4,
+            min_interval_minutes=135,
+            last_meal_number=1,
+        )
+
+        self.assertEqual(
+            [(event.event_id, event.title, event.when.strftime("%H:%M")) for event in events],
+            [
+                ("override-meal-2", "2 пп", "15:27"),
+                ("override-meal-3", "3 пп", "17:42"),
+                ("override-meal-4", "4 пп", "19:57"),
+                ("override-meal-5", "5 пп", "22:12"),
+            ],
+        )
+
+    def test_write_min_interval_food_override_has_no_water_events(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            override_dir = Path(temp_dir) / "day_overrides"
+
+            events = write_min_interval_food_override(
+                override_dir=override_dir,
+                anchor=datetime(2026, 8, 31, 13, 12),
+                remaining_meals=4,
+                min_interval_minutes=135,
+                last_meal_number=1,
+            )
+
+            override_path = override_dir / "2026-08-31.json"
+            override_text = override_path.read_text(encoding="utf-8")
+            data = json.loads(override_text)
+
+        self.assertEqual(events[-1].title, "5 пп")
+        self.assertEqual(data["date"], "2026-08-31")
+        self.assertEqual(data["suppress_cycles"], ["water-food-cycle"])
+        self.assertEqual([event["title"] for event in data["events"]], ["2 пп", "3 пп", "4 пп", "5 пп"])
+        self.assertNotIn("пв", override_text)
+
     def test_builds_compressed_food_events_until_cutoff(self):
         events = build_compressed_food_events(
             anchor=datetime(2026, 8, 31, 13, 12),

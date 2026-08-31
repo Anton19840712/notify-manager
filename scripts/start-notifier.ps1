@@ -13,7 +13,7 @@ param(
     [switch]$DesktopOff,
     [switch]$DesktopStatus,
     [int]$RecalcFood = 0,
-    [string]$RecalcCutoff = "20:45",
+    [int]$RecalcMinInterval = 135,
     [string]$RecalcAnchor = "",
     [int]$LastMealNumber = 1
 )
@@ -133,7 +133,7 @@ if ($DesktopStatus) {
 if ($RecalcFood -gt 0) {
     $recalcArgs = @(
         "--recalc-food", [string]$RecalcFood,
-        "--recalc-cutoff", $RecalcCutoff,
+        "--recalc-min-interval", [string]$RecalcMinInterval,
         "--last-meal-number", [string]$LastMealNumber
     )
     if ($RecalcAnchor) {

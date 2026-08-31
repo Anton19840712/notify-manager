@@ -9,7 +9,7 @@ from pathlib import Path
 from day_notifier.commands import CommandContext, handle_command
 from day_notifier.config import Settings, load_settings, set_desktop_enabled
 from day_notifier.desktop import DesktopNotifier
-from day_notifier.overrides import format_recalculated_food_events, write_compressed_food_override
+from day_notifier.overrides import format_min_interval_food_events, write_min_interval_food_override
 from day_notifier.schedule import Schedule, ScheduleEvent, load_schedule
 from day_notifier.state import JsonStateStore
 from day_notifier.telegram_client import TelegramClient
@@ -139,19 +139,19 @@ class NotifierApp:
     def recalc_food_day(
         self,
         remaining_meals: int,
-        cutoff_time: str = "20:45",
+        min_interval_minutes: int = 135,
         last_meal_number: int = 1,
         anchor: datetime | None = None,
     ) -> str:
-        events = write_compressed_food_override(
+        events = write_min_interval_food_override(
             override_dir=self.override_dir,
             anchor=anchor or datetime.now(),
             remaining_meals=remaining_meals,
-            cutoff_time=cutoff_time,
+            min_interval_minutes=min_interval_minutes,
             last_meal_number=last_meal_number,
         )
         self.reload_schedule()
-        return format_recalculated_food_events(events, cutoff_time)
+        return format_min_interval_food_events(events, min_interval_minutes)
 
     def set_desktop_enabled(self, enabled: bool) -> None:
         self.settings = set_desktop_enabled(self.settings_path, enabled)
@@ -194,7 +194,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--desktop-off", action="store_true", help="Disable desktop message boxes")
     parser.add_argument("--desktop-status", action="store_true", help="Print desktop message box status")
     parser.add_argument("--recalc-food", type=int, help="Recalculate remaining food events for today")
-    parser.add_argument("--recalc-cutoff", default="20:45", help="Latest meal time for --recalc-food")
+    parser.add_argument("--recalc-min-interval", type=int, default=135, help="Minimum minutes between food events")
     parser.add_argument("--recalc-anchor", help="Today HH:MM anchor time for the already completed meal")
     parser.add_argument("--last-meal-number", type=int, default=1, help="Last completed meal number")
     return parser
@@ -233,7 +233,7 @@ def main() -> int:
         print(
             app.recalc_food_day(
                 remaining_meals=args.recalc_food,
-                cutoff_time=args.recalc_cutoff,
+                min_interval_minutes=args.recalc_min_interval,
                 last_meal_number=args.last_meal_number,
                 anchor=anchor,
             )
