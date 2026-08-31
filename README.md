@@ -121,11 +121,11 @@ This writes a local one-day override to `data/day_overrides/`. Override files ar
 
 ## Schedule
 
-The default schedule uses a 135-minute meal-only cycle. Water is handled during and between meals without separate pre-meal reminders:
+The default schedule uses a 145-minute water/food cycle:
 
-- `1 пп` at `07:00`.
-- `2 пп` at `09:15`.
-- `3 пп` at `11:30`.
-- `4 пп` at `13:45`.
+- `1 пв` at `07:00`, `1 пп` at `07:15`.
+- `2 пв` at `09:25`, `2 пп` at `09:40`.
+- `3 пв` at `11:50`, `3 пп` at `12:05`.
+- `4 пв` at `14:15`, `4 пп` at `14:30`.
 
 The living practice list is kept in `data/day-practices.md`.
