@@ -12,14 +12,20 @@ from day_notifier.schedule import ScheduleEvent
 
 
 class AudioCuePlayerTests(unittest.TestCase):
-    def test_wake_up_event_opens_morning_prayer_file(self):
+    def test_wake_up_event_opens_cue_then_morning_prayer_after_delay(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            audio_path = root / "data" / "audio" / "morning-prayer.mp3"
-            audio_path.parent.mkdir(parents=True)
-            audio_path.write_bytes(b"mp3")
+            cue_path = root / "data" / "audio" / "rota-podem.mp3"
+            prayer_path = root / "data" / "audio" / "morning-prayer.mp3"
+            cue_path.parent.mkdir(parents=True)
+            cue_path.write_bytes(b"cue")
+            prayer_path.write_bytes(b"prayer")
             calls = []
-            player = AudioCuePlayer(root=root, opener=calls.append)
+            player = AudioCuePlayer(
+                root=root,
+                opener=lambda path: calls.append(("open", path)),
+                sleeper=lambda seconds: calls.append(("sleep", seconds)),
+            )
             event = ScheduleEvent(
                 event_id="wake-up",
                 title="Подъем",
@@ -30,7 +36,32 @@ class AudioCuePlayerTests(unittest.TestCase):
             played = player.play_for_event(event)
 
         self.assertTrue(played)
-        self.assertEqual(calls, [audio_path])
+        self.assertEqual(calls, [("open", cue_path), ("sleep", 2), ("open", prayer_path)])
+
+    def test_missing_wake_up_cue_still_opens_morning_prayer(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            prayer_path = root / "data" / "audio" / "morning-prayer.mp3"
+            prayer_path.parent.mkdir(parents=True)
+            prayer_path.write_bytes(b"prayer")
+            calls = []
+            player = AudioCuePlayer(
+                root=root,
+                opener=lambda path: calls.append(("open", path)),
+                sleeper=lambda seconds: calls.append(("sleep", seconds)),
+            )
+            event = ScheduleEvent(
+                event_id="wake-up",
+                title="Подъем",
+                message="Подъем",
+                when=datetime(2026, 8, 31, 4, 0),
+            )
+
+            with self.assertLogs(level="WARNING"):
+                played = player.play_for_event(event)
+
+        self.assertTrue(played)
+        self.assertEqual(calls, [("open", prayer_path)])
 
     def test_non_wake_up_event_does_not_open_audio(self):
         with tempfile.TemporaryDirectory() as temp_dir:
