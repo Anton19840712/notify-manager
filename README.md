@@ -15,6 +15,10 @@ Local Windows notifier for day practices. It reads `config/schedule.json`, shows
 
 The wake-up event opens the local MP3 file at `data/audio/morning-prayer.mp3`. If the file is missing or Windows cannot open it, the notifier logs the problem and still sends the regular Telegram and desktop reminders.
 
+## Hourly Prayers
+
+The default schedule has Saint John Chrysostom prayer reminders every hour from `05:00` through `20:00`: `05:00` is prayer 1, `06:00` is prayer 2, and `20:00` is prayer 16. These reminders are fixed to clock time, so `/shift day 10:00` does not move them.
+
 ## Run
 
 From PowerShell:
@@ -138,6 +142,7 @@ Telegram cleanup can only delete messages whose `message_id` was tracked after t
 
 The default schedule uses a 145-minute water/food cycle:
 
+- Saint John Chrysostom prayers run hourly from `05:00` through `20:00`.
 - `1 пв` at `07:00`, `1 пп` at `07:15`.
 - `2 пв` at `09:25`, `2 пп` at `09:40`.
 - `3 пв` at `11:50`, `3 пп` at `12:05`.
