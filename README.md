@@ -11,6 +11,10 @@ Local Windows notifier for day practices. It reads `config/schedule.json`, shows
 
 `config/settings.json` is ignored by git.
 
+## Morning Audio
+
+The wake-up event opens the local MP3 file at `data/audio/morning-prayer.mp3`. If the file is missing or Windows cannot open it, the notifier logs the problem and still sends the regular Telegram and desktop reminders.
+
 ## Run
 
 From PowerShell:

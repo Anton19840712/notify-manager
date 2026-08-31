@@ -7,6 +7,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+from day_notifier.audio import AudioCuePlayer
 from day_notifier.commands import CommandContext, handle_command
 from day_notifier.config import Settings, load_settings, set_desktop_enabled
 from day_notifier.desktop import DesktopNotifier
@@ -50,6 +51,7 @@ class NotifierApp:
         self.state = JsonStateStore(root / "data" / "state.json")
         self.inbox_path = root / "data" / "inbox.md"
         self.desktop = DesktopNotifier(enabled=self.settings.desktop_enabled)
+        self.audio = AudioCuePlayer(root)
         self.telegram = _make_telegram_client(self.settings)
 
     def run_forever(self) -> None:
@@ -85,6 +87,7 @@ class NotifierApp:
 
     def notify(self, event: ScheduleEvent) -> None:
         text = f"{event.when:%H:%M} - {event.title}\n{event.message}"
+        self.audio.play_for_event(event)
         if self.telegram is not None:
             try:
                 self.send_telegram_message(text)

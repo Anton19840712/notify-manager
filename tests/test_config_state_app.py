@@ -180,6 +180,7 @@ class ConfigStateAppTests(unittest.TestCase):
         app = NotifierApp.__new__(NotifierApp)
         app.telegram = RecordingTelegram(calls)
         app.desktop = RecordingDesktop(calls)
+        app.audio = NoopAudio()
         app.state = RecordingState(calls)
         event = ScheduleEvent(
             event_id="water-1",
@@ -195,12 +196,32 @@ class ConfigStateAppTests(unittest.TestCase):
         self.assertEqual(calls[2], ("desktop", "1 пв", False))
         self.assertEqual(calls[3], ("state", "water-1"))
 
+    def test_wake_up_notification_starts_audio_before_marking_notified(self):
+        calls = []
+        app = NotifierApp.__new__(NotifierApp)
+        app.telegram = RecordingTelegram(calls)
+        app.desktop = RecordingDesktop(calls)
+        app.audio = RecordingAudio(calls)
+        app.state = RecordingState(calls)
+        event = ScheduleEvent(
+            event_id="wake-up",
+            title="Подъем",
+            message="Подъем",
+            when=datetime(2026, 8, 31, 4, 0),
+        )
+
+        app.notify(event)
+
+        self.assertEqual(calls[0], ("audio", "wake-up"))
+        self.assertEqual(calls[-1], ("state", "wake-up"))
+
     def test_scheduled_notification_records_outgoing_telegram_message_id(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             calls = []
             app = NotifierApp.__new__(NotifierApp)
             app.telegram = RecordingTelegram(calls)
             app.desktop = RecordingDesktop(calls)
+            app.audio = NoopAudio()
             app.state = JsonStateStore(Path(temp_dir) / "state.json")
             event = ScheduleEvent(
                 event_id="water-1",
@@ -304,6 +325,20 @@ class RecordingDesktop:
 
     def show(self, title, message, blocking=False):
         self.calls.append(("desktop", title, blocking))
+        return True
+
+
+class NoopAudio:
+    def play_for_event(self, event):
+        return False
+
+
+class RecordingAudio:
+    def __init__(self, calls):
+        self.calls = calls
+
+    def play_for_event(self, event):
+        self.calls.append(("audio", event.event_id))
         return True
 
 
