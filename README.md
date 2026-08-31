@@ -13,7 +13,7 @@ Local Windows notifier for day practices. It reads `config/schedule.json`, shows
 
 ## Morning Audio
 
-The wake-up event first opens `data/audio/rota-podem.mp3`, waits 2 seconds, then opens `data/audio/morning-prayer.mp3`. If either file is missing or Windows cannot open it, the notifier logs the problem and still sends the regular Telegram and desktop reminders.
+The wake-up event first opens `data/audio/rota-podem.mp3`, waits 2 seconds, then opens `data/audio/morning-prays.mp3`. If either file is missing or Windows cannot open it, the notifier logs the problem and still sends the regular Telegram and desktop reminders.
 
 ## Hourly Prayers
 

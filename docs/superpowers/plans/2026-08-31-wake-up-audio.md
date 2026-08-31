@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Play `data/audio/morning-prayer.mp3` when the `wake-up` reminder is delivered.
+**Goal:** Play `data/audio/morning-prays.mp3` when the `wake-up` reminder is delivered.
 
 **Architecture:** Add a small audio adapter that opens a local file for only the `wake-up` event. Wire it into `NotifierApp.notify()` before the usual Telegram and desktop notification path, while failures only log and do not block reminders.
 
@@ -17,7 +17,7 @@
 - Modify `day-notifier/tests/test_config_state_app.py`: app-level wake-up audio behavior.
 - Create `day-notifier/tests/test_audio.py`: adapter behavior without opening a real player.
 - Modify `day-notifier/README.md`: document the local MP3 path.
-- Add `day-notifier/data/audio/morning-prayer.mp3`: attached audio asset.
+- Add `day-notifier/data/audio/morning-prays.mp3`: attached audio asset.
 
 ---
 
@@ -73,12 +73,12 @@ Run `python -m unittest day-notifier\tests\test_config_state_app.py`. Expected: 
 
 **Files:**
 - Modify: `day-notifier/README.md`
-- Add: `day-notifier/data/audio/morning-prayer.mp3`
+- Add: `day-notifier/data/audio/morning-prays.mp3`
 - Copy changed files to `C:\мое программное обеспечение\notify-manager`.
 
 - [x] **Step 1: Copy MP3 asset**
 
-Copy `C:\Users\MSI\Desktop\1-[AudioTrimmer.com]3x.mp3` to `day-notifier/data/audio/morning-prayer.mp3`.
+Copy `C:\Users\MSI\Desktop\1-[AudioTrimmer.com]3x.mp3` to `day-notifier/data/audio/morning-prays.mp3`.
 
 - [x] **Step 2: Update README**
 
@@ -86,7 +86,7 @@ Document the local audio path and wake-up trigger.
 
 - [x] **Step 3: Run full verification**
 
-Run tests, compileall, diff check, TODO/FIXME scan, and secret scan.
+Run tests, compileall, diff check, placeholder-marker scan, and secret scan.
 
 - [x] **Step 4: Commit, push, restart**
 
@@ -95,5 +95,5 @@ Commit mirror and private changes, push private `origin/main`, restart notifier,
 ## Self-Review
 
 - Spec coverage: covers local MP3 storage, wake-up-only trigger, shifted wake-up compatibility, missing-file behavior, and tests.
-- Placeholder scan: no TBD/TODO placeholders remain.
-- Type consistency: `AudioCuePlayer`, `play_for_event`, `wake-up`, and `data/audio/morning-prayer.mp3` are consistent.
+- Placeholder scan: no placeholder markers remain.
+- Type consistency: `AudioCuePlayer`, `play_for_event`, `wake-up`, and `data/audio/morning-prays.mp3` are consistent.

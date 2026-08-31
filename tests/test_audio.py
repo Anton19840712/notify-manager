@@ -16,7 +16,7 @@ class AudioCuePlayerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             cue_path = root / "data" / "audio" / "rota-podem.mp3"
-            prayer_path = root / "data" / "audio" / "morning-prayer.mp3"
+            prayer_path = root / "data" / "audio" / "morning-prays.mp3"
             cue_path.parent.mkdir(parents=True)
             cue_path.write_bytes(b"cue")
             prayer_path.write_bytes(b"prayer")
@@ -41,7 +41,7 @@ class AudioCuePlayerTests(unittest.TestCase):
     def test_missing_wake_up_cue_still_opens_morning_prayer(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            prayer_path = root / "data" / "audio" / "morning-prayer.mp3"
+            prayer_path = root / "data" / "audio" / "morning-prays.mp3"
             prayer_path.parent.mkdir(parents=True)
             prayer_path.write_bytes(b"prayer")
             calls = []
@@ -66,7 +66,7 @@ class AudioCuePlayerTests(unittest.TestCase):
     def test_non_wake_up_event_does_not_open_audio(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            audio_path = root / "data" / "audio" / "morning-prayer.mp3"
+            audio_path = root / "data" / "audio" / "morning-prays.mp3"
             audio_path.parent.mkdir(parents=True)
             audio_path.write_bytes(b"mp3")
             calls = []

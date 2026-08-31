@@ -10,7 +10,7 @@ The MP3 is an asset only. It is not parsed for instructions. The notifier keeps 
 
 ## Behavior
 
-- Store the file at `data/audio/morning-prayer.mp3`.
+- Store the file at `data/audio/morning-prays.mp3`.
 - When `NotifierApp.notify()` handles an event with `event_id == "wake-up"`, start the audio file through the local OS file opener.
 - Keep Telegram and desktop notifications working the same way.
 - If the file is missing or Windows cannot open it, log the failure and continue with the normal notification path.

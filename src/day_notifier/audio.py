@@ -11,7 +11,7 @@ from day_notifier.schedule import ScheduleEvent
 
 WAKE_UP_EVENT_ID = "wake-up"
 WAKE_UP_CUE_AUDIO_PATH = Path("data") / "audio" / "rota-podem.mp3"
-MORNING_PRAYER_AUDIO_PATH = Path("data") / "audio" / "morning-prayer.mp3"
+MORNING_PRAYER_AUDIO_PATH = Path("data") / "audio" / "morning-prays.mp3"
 WAKE_UP_CUE_DELAY_SECONDS = 2
 
 OpenAudioFile = Callable[[Path], None]
