@@ -162,6 +162,32 @@ class ConfigStateAppTests(unittest.TestCase):
         self.assertIn("Сегодня осталось", text)
         self.assertIn("22:00 Отбой", text)
 
+    def test_format_startup_summary_adds_countdowns_for_meals_bedtime_and_batch_cooking(self):
+        schedule = Schedule.from_dict(
+            {
+                "events": [
+                    {"id": "meal-4", "time": "21:00", "title": "4 пп", "message": "Контейнер"},
+                    {
+                        "id": "batch-cooking",
+                        "time": "21:30",
+                        "title": "Batch-cooking: 12 приемов на 3 дня",
+                        "message": "Готовка",
+                    },
+                    {"id": "bedtime", "time": "22:00", "title": "Отбой", "message": "Сон"},
+                ],
+                "cycles": [],
+            }
+        )
+
+        text = format_startup_summary(schedule, datetime(2026, 8, 30, 20, 45))
+
+        self.assertIn("21:00 4 пп (до приема пищи: 15 мин)", text)
+        self.assertIn(
+            "21:30 Batch-cooking: 12 приемов на 3 дня (до batch-cooking: 45 мин)",
+            text,
+        )
+        self.assertIn("22:00 Отбой (до сна: 1 ч 15 мин)", text)
+
     def test_test_notification_sends_telegram_before_blocking_desktop_box(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             calls = []
@@ -173,7 +199,9 @@ class ConfigStateAppTests(unittest.TestCase):
             app.send_test_notification()
 
         self.assertEqual(calls[0][0], "telegram")
-        self.assertEqual(calls[1], ("desktop", "notify-manager", True))
+        self.assertEqual(calls[1][0], "desktop")
+        self.assertEqual(calls[1][1], "notify-manager")
+        self.assertTrue(calls[1][3])
 
     def test_scheduled_notification_sends_telegram_before_desktop_box(self):
         calls = []
@@ -189,11 +217,14 @@ class ConfigStateAppTests(unittest.TestCase):
             when=datetime(2026, 8, 30, 7, 0),
         )
 
-        app.notify(event)
+        app.notify(event, now=datetime(2026, 8, 30, 7, 0))
 
         self.assertEqual(calls[0][0], "telegram")
         self.assertEqual(calls[1][0], "telegram-state")
-        self.assertEqual(calls[2], ("desktop", "1 пв", False))
+        self.assertEqual(calls[2][0], "desktop")
+        self.assertEqual(calls[2][1], "1 пв")
+        self.assertIn("Сейчас: 07:00", calls[2][2])
+        self.assertFalse(calls[2][3])
         self.assertEqual(calls[3], ("state", "water-1"))
 
     def test_wake_up_notification_starts_audio_before_marking_notified(self):
@@ -358,7 +389,7 @@ class RecordingDesktop:
         self.calls = calls
 
     def show(self, title, message, blocking=False):
-        self.calls.append(("desktop", title, blocking))
+        self.calls.append(("desktop", title, message, blocking))
         return True
 
 

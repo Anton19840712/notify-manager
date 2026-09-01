@@ -159,12 +159,6 @@ class ScheduleTests(unittest.TestCase):
                                 "title": "Batch-cooking: 12 приемов на 3 дня",
                                 "message": "Один длинный цикл готовки.",
                             },
-                            {
-                                "offset_minutes": 90,
-                                "id": "batch-cooking-cleanup",
-                                "title": "Контейнеры + кухня",
-                                "message": "Разложить 12 приемов и убрать поверхности.",
-                            },
                         ],
                     }
                 ],
@@ -192,7 +186,6 @@ class ScheduleTests(unittest.TestCase):
             [(event.event_id, event.when.strftime("%H:%M")) for event in cooking_day if event.event_id.startswith("batch-cooking")],
             [
                 ("batch-cooking", "19:17"),
-                ("batch-cooking-cleanup", "20:47"),
             ],
         )
         self.assertFalse(any(event.event_id.startswith("batch-cooking") for event in off_day))
@@ -200,7 +193,6 @@ class ScheduleTests(unittest.TestCase):
             [(event.event_id, event.when.strftime("%H:%M")) for event in next_cooking_day if event.event_id.startswith("batch-cooking")],
             [
                 ("batch-cooking", "14:40"),
-                ("batch-cooking-cleanup", "16:10"),
             ],
         )
 
@@ -311,11 +303,11 @@ class ScheduleTests(unittest.TestCase):
             [(event.title, event.when.strftime("%H:%M")) for event in first_cooking_day if event.event_id.startswith("batch-cooking")],
             [
                 ("Batch-cooking: 12 приемов на 3 дня", "14:40"),
-                ("Контейнеры + кухня", "16:10"),
             ],
         )
         self.assertFalse(any(event.event_id.startswith("batch-cooking") for event in off_day))
         self.assertTrue(any(event.event_id == "batch-cooking" for event in next_cooking_day))
+        self.assertFalse(any(event.title == "Контейнеры + кухня" for event in first_cooking_day))
 
     def test_default_schedule_contains_strength_rotation_and_lunch_nap(self):
         schedule = Schedule.from_dict(

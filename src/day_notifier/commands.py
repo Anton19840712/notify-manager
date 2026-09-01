@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Callable, Protocol
 
 from day_notifier.bot_commands import format_bot_commands_help
+from day_notifier.event_formatting import format_event_line
 from day_notifier.inbox import append_inbox_item, read_inbox_items
 from day_notifier.overrides import (
     format_min_interval_food_events,
@@ -92,7 +93,7 @@ def handle_command(text: str, context: CommandContext) -> CommandResult:
 
     if command == "/next":
         event = context.schedule.next_event(context.now())
-        return CommandResult(reply=_format_event("Следующее", event))
+        return CommandResult(reply=_format_event("Следующее", event, context.now()))
 
     if command == "/summary":
         return CommandResult(reply=_summary(context))
@@ -122,7 +123,7 @@ def handle_command(text: str, context: CommandContext) -> CommandResult:
         minutes = _parse_snooze_minutes(argument)
         event = context.state.last_event or context.schedule.next_event(context.now())
         snoozed = context.state.add_snooze(event, minutes)
-        return CommandResult(reply=_format_event(f"Отложил на {minutes} мин", snoozed))
+        return CommandResult(reply=_format_event(f"Отложил на {minutes} мин", snoozed, context.now()))
 
     if command == "/done":
         event = context.state.last_event
@@ -135,9 +136,10 @@ def handle_command(text: str, context: CommandContext) -> CommandResult:
 
 
 def _summary(context: CommandContext) -> str:
-    upcoming = context.schedule.upcoming(context.now(), limit=5)
+    current = context.now()
+    upcoming = context.schedule.upcoming(current, limit=5)
     lines = ["Ближайшее:"]
-    lines.extend(f"- {event.when:%H:%M} {event.title}" for event in upcoming)
+    lines.extend(format_event_line(event, current) for event in upcoming)
 
     inbox_items = read_inbox_items(context.inbox_path, limit=5)
     if inbox_items:
@@ -149,11 +151,12 @@ def _summary(context: CommandContext) -> str:
 
 
 def _today(context: CommandContext) -> str:
-    events = context.schedule.remaining_today(context.now(), limit=10)
+    current = context.now()
+    events = context.schedule.remaining_today(current, limit=10)
     if not events:
         return "Сегодня больше нет событий."
     lines = ["Сегодня:"]
-    lines.extend(f"- {event.when:%H:%M} {event.title}" for event in events)
+    lines.extend(format_event_line(event, current) for event in events)
     return "\n".join(lines)
 
 
@@ -249,8 +252,8 @@ def _shift(argument: str, context: CommandContext) -> str:
     return _format_shifted_day_result(parts[0], data)
 
 
-def _format_event(prefix: str, event: ScheduleEvent) -> str:
-    return f"{prefix}: {event.when:%H:%M} - {event.title}"
+def _format_event(prefix: str, event: ScheduleEvent, now: datetime) -> str:
+    return f"{prefix}: {format_event_line(event, now).removeprefix('- ')}"
 
 
 def _parse_snooze_minutes(argument: str) -> int:

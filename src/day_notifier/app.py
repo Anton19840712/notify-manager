@@ -12,6 +12,7 @@ from day_notifier.bot_commands import bot_command_payload, format_bot_command_sy
 from day_notifier.commands import CommandContext, handle_command
 from day_notifier.config import Settings, load_settings, set_desktop_enabled
 from day_notifier.desktop import DesktopNotifier
+from day_notifier.event_formatting import format_event_line, format_notification_text
 from day_notifier.overrides import (
     format_min_interval_food_events,
     write_min_interval_food_override,
@@ -77,7 +78,7 @@ class NotifierApp:
             grace_minutes=self.settings.missed_event_grace_minutes,
         )
         for event in due:
-            self.notify(event)
+            self.notify(event, now=current)
         self.process_telegram_commands()
 
     def send_telegram_message(self, text: str, track: bool = True) -> int | None:
@@ -88,15 +89,17 @@ class NotifierApp:
             self.state.track_telegram_message(message_id, "outgoing")
         return message_id
 
-    def notify(self, event: ScheduleEvent) -> None:
-        text = f"{event.when:%H:%M} - {event.title}\n{event.message}"
+    def notify(self, event: ScheduleEvent, now: datetime | None = None) -> None:
+        current = now or datetime.now()
+        telegram_text = format_notification_text(event, current)
+        desktop_text = format_notification_text(event, current, include_current_time=True)
         self.audio.play_for_event(event)
         if self.telegram is not None:
             try:
-                self.send_telegram_message(text)
+                self.send_telegram_message(telegram_text)
             except Exception:
                 logging.exception("Telegram notification failed")
-        self.desktop.show(event.title, text)
+        self.desktop.show(event.title, desktop_text)
         self.state.mark_notified(event)
 
     def process_telegram_commands(self) -> None:
@@ -133,7 +136,7 @@ class NotifierApp:
     def summary(self, now: datetime | None = None) -> str:
         current = now or datetime.now()
         lines = ["Ближайшие события:"]
-        lines.extend(f"- {event.when:%Y-%m-%d %H:%M} {event.title}" for event in self.schedule.upcoming(current, 10))
+        lines.extend(format_event_line(event, current, include_date=True) for event in self.schedule.upcoming(current, 10))
         return "\n".join(lines)
 
     def today(self, now: datetime | None = None) -> str:
@@ -249,7 +252,7 @@ def format_startup_summary(schedule: Schedule, now: datetime, limit: int = 10) -
         lines.append("Сегодня больше нет событий.")
         return "\n".join(lines)
     lines.append("Сегодня осталось:")
-    lines.extend(f"- {event.when:%H:%M} {event.title}" for event in events)
+    lines.extend(format_event_line(event, now) for event in events)
     return "\n".join(lines)
 
 
