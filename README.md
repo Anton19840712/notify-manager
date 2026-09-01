@@ -157,6 +157,10 @@ Telegram cleanup can only delete messages whose `message_id` was tracked after t
 The default schedule uses a 145-minute water/food cycle:
 
 - Saint John Chrysostom prayers run hourly from `05:00` through `20:00`.
+- Work daily is fixed at `11:00`.
+- Strength runs at `11:15` as a 7-day rotation: every day keeps thighs and calves, then adds one base movement.
+- The strength base movement rotation starts on `2026-09-01`: pull-ups, bench press, row, dips, overhead/Viking press, trap-bar/RDL, core/posture.
+- Lunch recovery sleep runs from `12:15` to `13:15`.
 - `1 пв` at `07:00`, `1 пп` at `07:15`.
 - `2 пв` at `09:25`, `2 пп` at `09:40`.
 - `3 пв` at `11:50`, `3 пп` at `12:05`.

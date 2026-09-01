@@ -29,11 +29,13 @@ class Schedule:
         events: list[dict[str, Any]] | None = None,
         cycles: list[dict[str, Any]] | None = None,
         relative_cycles: list[dict[str, Any]] | None = None,
+        rotating_events: list[dict[str, Any]] | None = None,
         day_overrides: dict[str, dict[str, Any]] | None = None,
     ) -> None:
         self._events = events or []
         self._cycles = cycles or []
         self._relative_cycles = relative_cycles or []
+        self._rotating_events = rotating_events or []
         self._day_overrides = day_overrides or {}
 
     @classmethod
@@ -46,6 +48,7 @@ class Schedule:
             events=list(data.get("events", [])),
             cycles=list(data.get("cycles", [])),
             relative_cycles=list(data.get("relative_cycles", [])),
+            rotating_events=list(data.get("rotating_events", [])),
             day_overrides=day_overrides,
         )
 
@@ -99,8 +102,48 @@ class Schedule:
                 )
             )
 
+        expanded.extend(self._expand_rotating_events(day, override))
         expanded.extend(self._expand_relative_cycles(day, expanded, override))
         return sorted(expanded, key=lambda event: event.when)
+
+    def _expand_rotating_events(
+        self,
+        day: date,
+        override: dict[str, Any],
+    ) -> list[ScheduleEvent]:
+        suppressed_events = set(str(event_id) for event_id in override.get("suppress_events", []))
+        suppressed_rotations = set(str(rotation_id) for rotation_id in override.get("suppress_rotations", []))
+        expanded: list[ScheduleEvent] = []
+        for rotation in self._rotating_events:
+            rotation_id = str(rotation.get("id", ""))
+            if rotation_id in suppressed_rotations:
+                continue
+
+            start_day = date.fromisoformat(str(rotation["start_date"]))
+            delta_days = (day - start_day).days
+            if delta_days < 0:
+                continue
+
+            period_days = int(rotation.get("period_days", 1))
+            if period_days < 1:
+                raise ValueError("rotating event period_days must be at least 1")
+
+            current_offset = delta_days % period_days
+            for item in rotation.get("items", []):
+                if int(item.get("offset_days", 0)) != current_offset:
+                    continue
+                event_id = str(item["id"])
+                if event_id in suppressed_events:
+                    continue
+                expanded.append(
+                    ScheduleEvent(
+                        event_id=event_id,
+                        title=str(item["title"]),
+                        message=str(item.get("message", item["title"])),
+                        when=datetime.combine(day, _parse_time(str(item.get("time", rotation["time"])))),
+                    )
+                )
+        return expanded
 
     def _expand_relative_cycles(
         self,

@@ -204,6 +204,56 @@ class ScheduleTests(unittest.TestCase):
             ],
         )
 
+    def test_rotating_events_select_item_by_day_offset(self):
+        schedule = Schedule.from_dict(
+            {
+                "events": [],
+                "cycles": [],
+                "rotating_events": [
+                    {
+                        "id": "strength-rotation",
+                        "start_date": "2026-09-01",
+                        "time": "11:15",
+                        "period_days": 7,
+                        "items": [
+                            {
+                                "offset_days": 0,
+                                "id": "strength-pullups",
+                                "title": "Силовой блок: подтягивания",
+                                "message": "Подтягивания.",
+                            },
+                            {
+                                "offset_days": 1,
+                                "id": "strength-bench-press",
+                                "title": "Силовой блок: жим лежа",
+                                "message": "Жим лежа.",
+                            },
+                        ],
+                    }
+                ],
+            },
+            day_overrides={
+                "2026-09-02": {
+                    "suppress_events": ["strength-bench-press"],
+                }
+            },
+        )
+
+        before_start = schedule.events_for_date(date(2026, 8, 31))
+        day_zero = schedule.events_for_date(date(2026, 9, 1))
+        suppressed_day = schedule.events_for_date(date(2026, 9, 2))
+        repeated_day_zero = schedule.events_for_date(date(2026, 9, 8))
+
+        self.assertEqual(before_start, [])
+        self.assertEqual(
+            [(event.event_id, event.title, event.when.strftime("%H:%M")) for event in day_zero],
+            [
+                ("strength-pullups", "Силовой блок: подтягивания", "11:15"),
+            ],
+        )
+        self.assertEqual(suppressed_day, [])
+        self.assertEqual([event.event_id for event in repeated_day_zero], ["strength-pullups"])
+
     def test_default_schedule_contains_detailed_morning_learning_sequence(self):
         schedule = Schedule.from_dict(
             json.loads((ROOT / "config" / "schedule.json").read_text(encoding="utf-8"))
@@ -266,6 +316,35 @@ class ScheduleTests(unittest.TestCase):
         )
         self.assertFalse(any(event.event_id.startswith("batch-cooking") for event in off_day))
         self.assertTrue(any(event.event_id == "batch-cooking" for event in next_cooking_day))
+
+    def test_default_schedule_contains_strength_rotation_and_lunch_nap(self):
+        schedule = Schedule.from_dict(
+            json.loads((ROOT / "config" / "schedule.json").read_text(encoding="utf-8"))
+        )
+
+        first_day = schedule.events_for_date(date(2026, 9, 1))
+        second_day = schedule.events_for_date(date(2026, 9, 2))
+
+        self.assertIn(
+            ("work-daily", "Дейли по работе", "11:00"),
+            [(event.event_id, event.title, event.when.strftime("%H:%M")) for event in first_day],
+        )
+        self.assertIn(
+            ("strength-pullups", "Силовой блок: бедра + голень + подтягивания", "11:15"),
+            [(event.event_id, event.title, event.when.strftime("%H:%M")) for event in first_day],
+        )
+        self.assertIn(
+            ("lunch-nap-start", "Досып / восстановление", "12:15"),
+            [(event.event_id, event.title, event.when.strftime("%H:%M")) for event in first_day],
+        )
+        self.assertIn(
+            ("lunch-nap-end", "Подъем после досыпа", "13:15"),
+            [(event.event_id, event.title, event.when.strftime("%H:%M")) for event in first_day],
+        )
+        self.assertIn(
+            ("strength-bench-press", "Силовой блок: бедра + голень + жим лежа", "11:15"),
+            [(event.event_id, event.title, event.when.strftime("%H:%M")) for event in second_day],
+        )
 
     def test_expands_water_and_food_cycle(self):
         schedule = Schedule.from_dict(
