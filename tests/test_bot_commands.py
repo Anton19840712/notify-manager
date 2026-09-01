@@ -25,6 +25,7 @@ class BotCommandRegistryTests(unittest.TestCase):
         self.assertIn({"command": "mi1", "description": "съел 1 прием пищи"}, payload)
         self.assertIn({"command": "mi4", "description": "съел 4 прием пищи"}, payload)
         self.assertIn({"command": "sd", "description": "перенести старт дня, пример /sd 10:00"}, payload)
+        self.assertIn({"command": "stop_bot", "description": "остановить локальный notifier"}, payload)
         self.assertIn({"command": "otboy", "description": "очистить чат перед сном"}, payload)
 
     def test_help_text_is_generated_from_same_registry(self):
@@ -32,6 +33,7 @@ class BotCommandRegistryTests(unittest.TestCase):
 
         self.assertIn("/mi1 - съел 1 прием пищи", help_text)
         self.assertIn("/desktop_on - включить desktop окна", help_text)
+        self.assertIn("/stop_bot - остановить локальный notifier", help_text)
         self.assertIn("/sd - перенести старт дня, пример /sd 10:00", help_text)
 
 

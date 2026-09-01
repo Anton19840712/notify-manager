@@ -145,6 +145,10 @@ class TelegramClientTests(unittest.TestCase):
                         "update_id": 12,
                         "message": {"message_id": 79, "chat": {"id": 456}, "text": "desktop_on"},
                     },
+                    {
+                        "update_id": 13,
+                        "message": {"message_id": 80, "chat": {"id": 456}, "text": "stop_bot"},
+                    },
                 ],
             }
         )
@@ -154,7 +158,7 @@ class TelegramClientTests(unittest.TestCase):
 
         self.assertEqual(
             [(command.update_id, command.text, command.message_id) for command in commands],
-            [(10, "mi2", 77), (11, "sd 10:00", 78), (12, "desktop_on", 79)],
+            [(10, "mi2", 77), (11, "sd 10:00", 78), (12, "desktop_on", 79), (13, "stop_bot", 80)],
         )
 
     def test_delete_messages_uses_batch_api(self):

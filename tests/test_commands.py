@@ -371,6 +371,17 @@ class CommandTests(unittest.TestCase):
 
         self.assertIn("Чат очищен", result.reply)
 
+    def test_botfather_stop_bot_alias_requests_shutdown(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+            calls = []
+            context.request_shutdown = lambda: calls.append("shutdown")
+
+            result = handle_command("/stop_bot", context)
+
+        self.assertEqual(calls, ["shutdown"])
+        self.assertIn("Останавливаю notify-manager", result.reply)
+
     def test_botfather_desktop_aliases_control_notifications(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             context = self.make_context(Path(temp_dir) / "inbox.md")
@@ -391,9 +402,10 @@ class CommandTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             context = self.make_context(Path(temp_dir) / "inbox.md")
 
-            result = handle_command("/help", context)
+        result = handle_command("/help", context)
 
         self.assertIn("/mi1 - съел 1 прием пищи", result.reply)
+        self.assertIn("/stop_bot - остановить локальный notifier", result.reply)
         self.assertIn("/sd - перенести старт дня", result.reply)
 
 

@@ -30,6 +30,7 @@ BOT_COMMANDS: tuple[BotCommandDefinition, ...] = (
     BotCommandDefinition("desktop_on", "включить desktop окна"),
     BotCommandDefinition("desktop_off", "выключить desktop окна"),
     BotCommandDefinition("desktop_status", "статус desktop окон"),
+    BotCommandDefinition("stop_bot", "остановить локальный notifier"),
     BotCommandDefinition("inbox", "добавить текст в inbox"),
     BotCommandDefinition("otboy", "очистить чат перед сном"),
 )

@@ -284,6 +284,22 @@ class ConfigStateAppTests(unittest.TestCase):
         self.assertIn('"suppress_events"', override_text)
         self.assertNotIn("пв", override_text)
 
+    def test_process_telegram_stop_bot_command_requests_shutdown(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_project_files(root)
+            app = NotifierApp(root)
+            calls = []
+            app.telegram = RecordingTelegram(
+                calls,
+                commands=[TelegramCommand(update_id=10, text="/stop_bot")],
+            )
+
+            app.process_telegram_commands()
+
+        self.assertTrue(app.stop_requested)
+        self.assertIn("Останавливаю notify-manager", calls[-1][1])
+
     def test_shift_day_writes_override_and_returns_summary(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

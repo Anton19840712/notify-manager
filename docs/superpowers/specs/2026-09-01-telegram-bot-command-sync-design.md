@@ -15,10 +15,11 @@ The notifier keeps one registry of menu commands:
 - `summary`, `today`, `next`, `done`, `snooze`, `recalc`, `sd`, `inbox`;
 - `mi1`, `mi2`, `mi3`, `mi4` for meal completion shortcuts;
 - `desktop_on`, `desktop_off`, `desktop_status`;
+- `stop_bot` for stopping the local notifier process from the authorized Telegram chat;
 - `otboy` for the bedtime chat cleanup command;
 - `help` for the generated command list.
 
-The registry produces the payload for Telegram Bot API `setMyCommands` and the in-chat help text. Button-friendly aliases such as `/mi1`, `/desktop_on`, and `/otboy` are translated into the existing internal command actions.
+The registry produces the payload for Telegram Bot API `setMyCommands` and the in-chat help text. Button-friendly aliases such as `/mi1`, `/desktop_on`, `/stop_bot`, and `/otboy` are translated into the existing internal command actions.
 
 ## Runtime Sync
 
@@ -30,4 +31,4 @@ If Telegram credentials are missing, sync returns a readable message. If Telegra
 
 ## Testing
 
-Tests cover command-name validation, payload generation, TelegramClient `setMyCommands`, notifier sync, generated help text, and menu aliases for meals, desktop controls, and bedtime cleanup.
+Tests cover command-name validation, payload generation, TelegramClient `setMyCommands`, notifier sync, generated help text, and menu aliases for meals, desktop controls, local stop, and bedtime cleanup.

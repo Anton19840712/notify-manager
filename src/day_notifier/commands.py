@@ -56,6 +56,7 @@ class CommandContext:
     reload_schedule: Callable[[], None] | None = None
     schedule_path: Path | None = None
     cleanup_telegram_chat: Callable[[], str] | None = None
+    request_shutdown: Callable[[], None] | None = None
 
 
 @dataclass(frozen=True)
@@ -82,6 +83,12 @@ def handle_command(text: str, context: CommandContext) -> CommandResult:
         if context.cleanup_telegram_chat is None:
             return CommandResult(reply="Очистка Telegram-чата недоступна в этом режиме.")
         return CommandResult(reply=context.cleanup_telegram_chat())
+
+    if command in {"/stop_bot", "stop_bot"}:
+        if context.request_shutdown is None:
+            return CommandResult(reply="Остановка notify-manager недоступна в этом режиме.")
+        context.request_shutdown()
+        return CommandResult(reply="Останавливаю notify-manager. Запусти снова через AHK или PowerShell.")
 
     if command == "/next":
         event = context.schedule.next_event(context.now())

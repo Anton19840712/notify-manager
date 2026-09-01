@@ -54,14 +54,16 @@ class NotifierApp:
         self.desktop = DesktopNotifier(enabled=self.settings.desktop_enabled)
         self.audio = AudioCuePlayer(root)
         self.telegram = _make_telegram_client(self.settings)
+        self.stop_requested = False
 
     def run_forever(self) -> None:
         logging.info("Day notifier started in %s", self.root)
         if self.settings.startup_summary_enabled:
             self.send_startup_summary()
-        while True:
+        while not self.stop_requested:
             self.run_once()
-            time.sleep(self.settings.check_interval_seconds)
+            if not self.stop_requested:
+                time.sleep(self.settings.check_interval_seconds)
 
     def run_once(self, now: datetime | None = None) -> None:
         self.refresh_settings()
@@ -117,6 +119,7 @@ class NotifierApp:
             reload_schedule=self.reload_schedule,
             schedule_path=self.schedule_path,
             cleanup_telegram_chat=self.cleanup_telegram_chat,
+            request_shutdown=self.request_shutdown,
         )
         for command in commands:
             try:
@@ -213,6 +216,9 @@ class NotifierApp:
             return "Отбой. Не смог очистить Telegram-чат: Telegram вернул ошибку."
         self.state.clear_telegram_messages()
         return f"Отбой. Чат очищен: удалено {summary.deleted}, пропущено {summary.failed}."
+
+    def request_shutdown(self) -> None:
+        self.stop_requested = True
 
     def set_desktop_enabled(self, enabled: bool) -> None:
         self.settings = set_desktop_enabled(self.settings_path, enabled)

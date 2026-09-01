@@ -143,6 +143,7 @@ This writes a local one-day override to `data/day_overrides/`. Override files ar
 - `/mi1`, `/mi2`, `/mi3`, `/mi4` - mark the selected meal as completed now.
 - `/otboy`, `/отбой`, or `отбой` - delete tracked bot-chat messages and leave one bedtime confirmation.
 - `/desktop on`, `/desktop off`, `/desktop status`, `/desktop_on`, `/desktop_off`, `/desktop_status` - control center-screen MsgBox reminders.
+- `/stop_bot` - stop the local notifier process after sending a confirmation reply.
 - `/inbox text` - append a small task to `data/inbox.md`.
 
 Telegram menu command names are kept BotFather-safe: lowercase English letters, digits, and underscores only. Run `.\scripts\start-notifier.ps1 -SyncBotCommands` after changing commands so Telegram shows the same menu that the notifier understands.

@@ -20,11 +20,11 @@
 
 - [x] **Step 1: Write failing tests**
 
-Add tests that expect BotFather-safe commands, generated help text, `/mi1`, `/mi2`, `/desktop_on`, `/desktop_off`, `/desktop_status`, `/otboy`, and `/help`.
+Add tests that expect BotFather-safe commands, generated help text, `/mi1`, `/mi2`, `/desktop_on`, `/desktop_off`, `/desktop_status`, `/stop_bot`, `/otboy`, and `/help`.
 
 - [x] **Step 2: Implement registry and parser aliases**
 
-Add `BOT_COMMANDS`, payload generation, help formatting, meal shortcut parsing, desktop aliases, and the Latin bedtime cleanup alias.
+Add `BOT_COMMANDS`, payload generation, help formatting, meal shortcut parsing, desktop aliases, local stop alias, and the Latin bedtime cleanup alias.
 
 - [x] **Step 3: Verify focused tests**
 
@@ -60,7 +60,7 @@ Run focused tests, full tests, compileall, diff check, placeholder-marker scan, 
 
 - [x] **Step 1: Document sync**
 
-Document `-SyncBotCommands`, menu-safe command names, and the difference between menu commands and argument forms.
+Document `-SyncBotCommands`, menu-safe command names, `stop_bot`, and the difference between menu commands and argument forms.
 
 - [x] **Step 2: Roll out**
 
@@ -68,6 +68,6 @@ Run private tests, commit, push `origin/main`, restart notifier, and run `.\scri
 
 ## Self-Review
 
-- Spec coverage: registry, aliases, Telegram payload, CLI, PowerShell, AHK, docs, private sync, and runtime sync are covered.
+- Spec coverage: registry, aliases, Telegram payload, local stop, CLI, PowerShell, AHK, docs, private sync, and runtime sync are covered.
 - Placeholder scan: no placeholder markers remain.
 - Type consistency: `BOT_COMMANDS`, `bot_command_payload`, `set_my_commands`, `sync_bot_commands`, and `SyncBotCommands` are named consistently.
