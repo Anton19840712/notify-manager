@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable, Protocol
 
+from day_notifier.bot_commands import format_bot_commands_help
 from day_notifier.inbox import append_inbox_item, read_inbox_items
 from day_notifier.overrides import (
     format_min_interval_food_events,
@@ -22,6 +23,15 @@ MEAL_DONE_PATTERNS = [
     re.compile(r"^/?\s*(\d+)\s+(?:mi|pp|пп)\s+done$", re.IGNORECASE),
     re.compile(r"^/mi\s+(\d+)\s+done$", re.IGNORECASE),
 ]
+QUICK_MEAL_DONE_PATTERN = re.compile(r"^/?mi(\d+)$", re.IGNORECASE)
+DESKTOP_COMMAND_ALIASES = {
+    "/desktop_on": "on",
+    "desktop_on": "on",
+    "/desktop_off": "off",
+    "desktop_off": "off",
+    "/desktop_status": "status",
+    "desktop_status": "status",
+}
 
 
 class RuntimeState(Protocol):
@@ -58,11 +68,17 @@ def handle_command(text: str, context: CommandContext) -> CommandResult:
     meal_done_number = _parse_meal_done_number(stripped)
     if meal_done_number is not None:
         return CommandResult(reply=_meal_done(meal_done_number, context))
+    quick_meal_done_number = _parse_quick_meal_done_number(stripped)
+    if quick_meal_done_number is not None:
+        return CommandResult(reply=_meal_done(quick_meal_done_number, context))
 
     command, _, argument = stripped.partition(" ")
     command = command.lower()
 
-    if command in {"/отбой", "отбой"}:
+    if command in {"/help", "help"}:
+        return CommandResult(reply=format_bot_commands_help())
+
+    if command in {"/отбой", "отбой", "/otboy", "otboy"}:
         if context.cleanup_telegram_chat is None:
             return CommandResult(reply="Очистка Telegram-чата недоступна в этом режиме.")
         return CommandResult(reply=context.cleanup_telegram_chat())
@@ -79,6 +95,9 @@ def handle_command(text: str, context: CommandContext) -> CommandResult:
 
     if command == "/desktop":
         return CommandResult(reply=_desktop(argument, context))
+
+    if command in DESKTOP_COMMAND_ALIASES:
+        return CommandResult(reply=_desktop(DESKTOP_COMMAND_ALIASES[command], context))
 
     if command == "/recalc":
         return CommandResult(reply=_recalc(argument, context))
@@ -105,12 +124,7 @@ def handle_command(text: str, context: CommandContext) -> CommandResult:
         context.state.mark_done(event, context.now())
         return CommandResult(reply=f"Готово: {event.title}")
 
-    return CommandResult(
-        reply=(
-            "Команды: /summary, /today, /next, /done, /snooze 10, "
-            "/recalc food 4, /2 mi done, /sd 10:00, /отбой, /desktop on|off|status, /inbox текст"
-        )
-    )
+    return CommandResult(reply=format_bot_commands_help())
 
 
 def _summary(context: CommandContext) -> str:
@@ -253,6 +267,11 @@ def _parse_meal_done_number(text: str) -> int | None:
         if match:
             return int(match.group(1))
     return None
+
+
+def _parse_quick_meal_done_number(text: str) -> int | None:
+    match = QUICK_MEAL_DONE_PATTERN.match(text)
+    return int(match.group(1)) if match else None
 
 
 def _looks_like_time(value: str) -> bool:

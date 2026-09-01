@@ -300,6 +300,17 @@ class ConfigStateAppTests(unittest.TestCase):
         self.assertIn("12:25 2 пп", result)
         self.assertIn('"suppress_events"', override_text)
 
+    def test_sync_bot_commands_sends_menu_to_telegram(self):
+        calls = []
+        app = NotifierApp.__new__(NotifierApp)
+        app.telegram = RecordingTelegram(calls)
+
+        result = app.sync_bot_commands()
+
+        self.assertIn("Синхронизировал команды Telegram-меню", result)
+        self.assertEqual(calls[0][0], "set_my_commands")
+        self.assertIn({"command": "mi1", "description": "съел 1 прием пищи"}, calls[0][1])
+
 
 class RecordingTelegram:
     def __init__(self, calls, commands=None):
@@ -317,6 +328,10 @@ class RecordingTelegram:
     def delete_messages(self, message_ids):
         self.calls.append(("delete_messages", list(message_ids)))
         return DeleteSummary(deleted=len(message_ids), failed=0)
+
+    def set_my_commands(self, commands):
+        self.calls.append(("set_my_commands", commands))
+        return True
 
 
 class RecordingDesktop:

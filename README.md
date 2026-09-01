@@ -53,6 +53,7 @@ The AutoHotkey script starts the notifier and adds tray menu actions:
 - `Today`
 - `Summary`
 - `Test Telegram`
+- `Sync Bot Commands`
 - `Test Desktop MsgBox`
 - `Desktop On`
 - `Desktop Off`
@@ -94,6 +95,12 @@ Send a test Telegram and desktop notification:
 .\scripts\start-notifier.ps1 -TestTelegram
 ```
 
+Sync the Telegram bot command menu:
+
+```powershell
+.\scripts\start-notifier.ps1 -SyncBotCommands
+```
+
 Show a blocking center-screen desktop message box:
 
 ```powershell
@@ -124,6 +131,7 @@ This writes a local one-day override to `data/day_overrides/`. Override files ar
 
 ## Telegram Commands
 
+- `/help` - generated command list.
 - `/summary` - upcoming reminders and inbox.
 - `/today` - remaining reminders for today.
 - `/next` - next reminder.
@@ -132,9 +140,12 @@ This writes a local one-day override to `data/day_overrides/`. Override files ar
 - `/recalc food 4` - recalculate today's remaining food reminders with a 10-minute eating window and a 2:15 gap after eating.
 - `/2 mi done`, `2 mi done`, `2 pp done`, `2 пп done`, `/ 2 mi done`, or `/mi 2 done` - mark meal 2 as completed now and recalculate today's remaining meal reminders.
 - `/sd 10:00` or `sd 10:00` - rebuild today's start-relative reminders from 10:00; tomorrow keeps the base flow.
-- `/отбой` or `отбой` - delete tracked bot-chat messages and leave one bedtime confirmation.
-- `/desktop on`, `/desktop off`, `/desktop status` - control center-screen MsgBox reminders.
+- `/mi1`, `/mi2`, `/mi3`, `/mi4` - mark the selected meal as completed now.
+- `/otboy`, `/отбой`, or `отбой` - delete tracked bot-chat messages and leave one bedtime confirmation.
+- `/desktop on`, `/desktop off`, `/desktop status`, `/desktop_on`, `/desktop_off`, `/desktop_status` - control center-screen MsgBox reminders.
 - `/inbox text` - append a small task to `data/inbox.md`.
+
+Telegram menu command names are kept BotFather-safe: lowercase English letters, digits, and underscores only. Run `.\scripts\start-notifier.ps1 -SyncBotCommands` after changing commands so Telegram shows the same menu that the notifier understands.
 
 Telegram cleanup can only delete messages whose `message_id` was tracked after this feature was enabled. Telegram may reject old messages outside its deletion window, and those are counted as skipped.
 

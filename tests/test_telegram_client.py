@@ -38,6 +38,30 @@ class TelegramClientTests(unittest.TestCase):
 
         self.assertEqual(message_id, 42)
 
+    def test_set_my_commands_posts_bot_command_payload(self):
+        transport = FakeTransport({"ok": True, "result": True})
+        client = TelegramClient("123:abc", "456", transport=transport)
+
+        result = client.set_my_commands(
+            [
+                {"command": "summary", "description": "ближайшие события"},
+                {"command": "mi1", "description": "съел 1 прием пищи"},
+            ]
+        )
+
+        url, payload = transport.calls[0]
+        self.assertTrue(result)
+        self.assertTrue(url.endswith("/bot123:abc/setMyCommands"))
+        self.assertEqual(
+            json.loads(payload.decode("utf-8")),
+            {
+                "commands": [
+                    {"command": "summary", "description": "ближайшие события"},
+                    {"command": "mi1", "description": "съел 1 прием пищи"},
+                ]
+            },
+        )
+
     def test_get_commands_filters_by_chat_id(self):
         transport = FakeTransport(
             {
@@ -103,6 +127,35 @@ class TelegramClientTests(unittest.TestCase):
         commands = client.get_commands()
 
         self.assertEqual([(command.update_id, command.text, command.message_id) for command in commands], [(10, "2 mi done", 77)])
+
+    def test_get_commands_accepts_plain_bot_menu_aliases(self):
+        transport = FakeTransport(
+            {
+                "ok": True,
+                "result": [
+                    {
+                        "update_id": 10,
+                        "message": {"message_id": 77, "chat": {"id": 456}, "text": "mi2"},
+                    },
+                    {
+                        "update_id": 11,
+                        "message": {"message_id": 78, "chat": {"id": 456}, "text": "sd 10:00"},
+                    },
+                    {
+                        "update_id": 12,
+                        "message": {"message_id": 79, "chat": {"id": 456}, "text": "desktop_on"},
+                    },
+                ],
+            }
+        )
+        client = TelegramClient("123:abc", "456", transport=transport)
+
+        commands = client.get_commands()
+
+        self.assertEqual(
+            [(command.update_id, command.text, command.message_id) for command in commands],
+            [(10, "mi2", 77), (11, "sd 10:00", 78), (12, "desktop_on", 79)],
+        )
 
     def test_delete_messages_uses_batch_api(self):
         transport = FakeTransport({"ok": True, "result": True})

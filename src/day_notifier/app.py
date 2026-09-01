@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 
 from day_notifier.audio import AudioCuePlayer
+from day_notifier.bot_commands import bot_command_payload, format_bot_command_sync_result
 from day_notifier.commands import CommandContext, handle_command
 from day_notifier.config import Settings, load_settings, set_desktop_enabled
 from day_notifier.desktop import DesktopNotifier
@@ -152,6 +153,19 @@ class NotifierApp:
             self.send_telegram_message(text)
         self.desktop.show("notify-manager", text, blocking=True)
 
+    def sync_bot_commands(self) -> str:
+        if self.telegram is None:
+            return "Telegram-меню не синхронизировано: настройки Telegram отсутствуют."
+        commands = bot_command_payload()
+        try:
+            synced = self.telegram.set_my_commands(commands)
+        except Exception:
+            logging.exception("Telegram bot command sync failed")
+            return "Не смог синхронизировать Telegram-меню: Telegram вернул ошибку."
+        if not synced:
+            return "Не смог синхронизировать Telegram-меню: Telegram не подтвердил обновление."
+        return format_bot_command_sync_result()
+
     def test_desktop_notification(self) -> None:
         self.desktop.show("notify-manager", "Тест desktop MsgBox: центральное окно работает.", blocking=True)
 
@@ -236,6 +250,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--summary", action="store_true", help="Print upcoming events and exit")
     parser.add_argument("--today", action="store_true", help="Print remaining events for today and exit")
     parser.add_argument("--test-telegram", action="store_true", help="Send a test desktop and Telegram notification")
+    parser.add_argument("--sync-bot-commands", action="store_true", help="Sync Telegram bot command menu")
     parser.add_argument("--test-desktop", action="store_true", help="Show a blocking desktop message box")
     parser.add_argument("--desktop-on", action="store_true", help="Enable desktop message boxes")
     parser.add_argument("--desktop-off", action="store_true", help="Disable desktop message boxes")
@@ -260,6 +275,9 @@ def main() -> int:
         return 0
     if args.test_telegram:
         app.send_test_notification()
+        return 0
+    if args.sync_bot_commands:
+        print(app.sync_bot_commands())
         return 0
     if args.test_desktop:
         app.test_desktop_notification()

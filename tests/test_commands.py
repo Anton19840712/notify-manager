@@ -212,6 +212,8 @@ class CommandTests(unittest.TestCase):
             "/2 mi done",
             "/2 pp done",
             "/ 2 mi done",
+            "/mi2",
+            "mi2",
             "/mi 2 done",
         ]:
             with self.subTest(text=text):
@@ -224,6 +226,18 @@ class CommandTests(unittest.TestCase):
                     result = handle_command(text, context)
 
                 self.assertIn("Принял: 2 пп завершен в 12:25.", result.reply)
+
+    def test_botfather_meal_shortcut_marks_selected_meal_done(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+            context.override_dir = Path(temp_dir) / "day_overrides"
+            context.schedule = self.make_food_schedule()
+            context.now = lambda: datetime(2026, 8, 31, 12, 25)
+
+            result = handle_command("/mi1", context)
+
+        self.assertIn("Принял: 1 пп завершен в 12:25.", result.reply)
+        self.assertIn("14:40 2 пп", result.reply)
 
     def test_meal_done_command_rejects_invalid_meal_number(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -347,6 +361,40 @@ class CommandTests(unittest.TestCase):
             result = handle_command("отбой", context)
 
         self.assertIn("Чат очищен", result.reply)
+
+    def test_botfather_bedtime_alias_uses_cleanup_callback(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+            context.cleanup_telegram_chat = lambda: "Отбой. Чат очищен: удалено 1, пропущено 0."
+
+            result = handle_command("/otboy", context)
+
+        self.assertIn("Чат очищен", result.reply)
+
+    def test_botfather_desktop_aliases_control_notifications(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+            calls = []
+            context.set_desktop_enabled = calls.append
+            context.is_desktop_enabled = lambda: True
+
+            on_result = handle_command("/desktop_on", context)
+            off_result = handle_command("/desktop_off", context)
+            status_result = handle_command("/desktop_status", context)
+
+        self.assertEqual(calls, [True, False])
+        self.assertIn("включены", on_result.reply)
+        self.assertIn("выключены", off_result.reply)
+        self.assertIn("сейчас включены", status_result.reply)
+
+    def test_help_command_uses_botfather_safe_names(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+
+            result = handle_command("/help", context)
+
+        self.assertIn("/mi1 - съел 1 прием пищи", result.reply)
+        self.assertIn("/sd - перенести старт дня", result.reply)
 
 
 if __name__ == "__main__":

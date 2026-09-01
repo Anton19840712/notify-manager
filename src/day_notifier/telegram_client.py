@@ -6,9 +6,12 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any, Callable
 
+from day_notifier.bot_commands import BOT_COMMANDS
+
 
 Transport = Callable[[str, bytes], dict[str, Any]]
 MEAL_DONE_TEXT_PATTERN = re.compile(r"^\d+\s+(?:mi|pp|пп)\s+done$", re.IGNORECASE)
+PLAIN_BOT_COMMAND_NAMES = frozenset(command.command for command in BOT_COMMANDS)
 
 
 @dataclass(frozen=True)
@@ -35,6 +38,10 @@ class TelegramClient:
         result = response.get("result") or {}
         message_id = result.get("message_id")
         return int(message_id) if message_id is not None else None
+
+    def set_my_commands(self, commands: list[dict[str, str]]) -> bool:
+        response = self._call("setMyCommands", {"commands": commands})
+        return bool(response.get("result", False))
 
     def get_commands(self, offset: int | None = None) -> list[TelegramCommand]:
         payload: dict[str, Any] = {"timeout": 0}
@@ -91,7 +98,13 @@ def _chunks(values: list[int], size: int):
 
 def _is_supported_command_text(text: str) -> bool:
     stripped = text.strip()
-    return stripped.startswith("/") or stripped.lower() == "отбой" or bool(MEAL_DONE_TEXT_PATTERN.match(stripped))
+    command, _, _ = stripped.partition(" ")
+    return (
+        stripped.startswith("/")
+        or command.lower() in PLAIN_BOT_COMMAND_NAMES
+        or stripped.lower() == "отбой"
+        or bool(MEAL_DONE_TEXT_PATTERN.match(stripped))
+    )
 
 
 def _urllib_transport(url: str, payload: bytes) -> dict[str, Any]:
