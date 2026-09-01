@@ -247,11 +247,9 @@ class NotifierApp:
 
 def format_startup_summary(schedule: Schedule, now: datetime, limit: int = 10) -> str:
     events = schedule.remaining_today(now, limit=limit)
-    lines = ["notify-manager запущен."]
     if not events:
-        lines.append("Сегодня больше нет событий.")
-        return "\n".join(lines)
-    lines.append("Сегодня осталось:")
+        return "Сегодня больше нет событий."
+    lines = ["Сегодня осталось:"]
     lines.extend(format_event_line(event, now) for event in events)
     return "\n".join(lines)
 

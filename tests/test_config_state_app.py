@@ -158,8 +158,8 @@ class ConfigStateAppTests(unittest.TestCase):
 
         text = format_startup_summary(schedule, datetime(2026, 8, 30, 21, 0))
 
-        self.assertIn("notify-manager запущен", text)
-        self.assertIn("Сегодня осталось", text)
+        self.assertNotIn("notify-manager запущен", text)
+        self.assertTrue(text.startswith("Сегодня осталось:"))
         self.assertIn("22:00 Отбой", text)
 
     def test_format_startup_summary_adds_countdowns_for_meals_bedtime_and_batch_cooking(self):
