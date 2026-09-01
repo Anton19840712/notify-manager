@@ -32,6 +32,8 @@ def _countdown_suffix(event: ScheduleEvent, reference: datetime) -> str:
     label = _countdown_label(event)
     if label is None:
         return ""
+    if event.when <= reference:
+        return ""
     return f" ({_format_countdown(label, event.when, reference)})"
 
 
@@ -49,11 +51,7 @@ def _countdown_label(event: ScheduleEvent) -> str | None:
 
 def _format_countdown(label: str, target: datetime, reference: datetime) -> str:
     seconds = int((target - reference).total_seconds())
-    if -59 <= seconds <= 59:
-        return f"{label}: сейчас"
-    if seconds > 0:
-        return f"{label}: {_format_duration(seconds)}"
-    return f"опоздание: {_format_duration(-seconds)}"
+    return f"{label}: {_format_duration(seconds)}"
 
 
 def _format_duration(seconds: int) -> str:

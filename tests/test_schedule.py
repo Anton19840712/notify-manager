@@ -113,6 +113,7 @@ class ScheduleTests(unittest.TestCase):
             [(event.event_id, event.title, event.when.strftime("%H:%M")) for event in override_day_events],
             [
                 ("wake", "Подъем", "04:00"),
+                ("pre-override-meal-2", "10 минут до 2 пп", "14:55"),
                 ("override-meal-2", "2 пп", "15:05"),
             ],
         )
@@ -121,7 +122,72 @@ class ScheduleTests(unittest.TestCase):
             [
                 ("wake", "Подъем", "04:00"),
                 ("water-1", "1 пв", "07:00"),
+                ("pre-meal-1", "10 минут до 1 пп", "07:05"),
                 ("meal-1", "1 пп", "07:15"),
+            ],
+        )
+
+    def test_meal_prep_reminders_are_generated_for_base_and_override_meals(self):
+        schedule = Schedule.from_dict(
+            {
+                "events": [],
+                "cycles": [
+                    {
+                        "id": "food-cycle",
+                        "start_time": "07:00",
+                        "period_minutes": 145,
+                        "count": 1,
+                        "items": [
+                            {
+                                "offset_minutes": 15,
+                                "id_template": "meal-{n}",
+                                "title_template": "{n} пп",
+                                "message_template": "{n} прием пищи",
+                            },
+                        ],
+                    }
+                ],
+            },
+            day_overrides={
+                "2026-08-31": {
+                    "suppress_cycles": ["food-cycle"],
+                    "events": [
+                        {
+                            "id": "override-meal-4",
+                            "time": "19:25",
+                            "title": "4 пп",
+                            "message": "Пересчитанный прием пищи.",
+                        }
+                    ],
+                }
+            },
+        )
+
+        base_events = schedule.events_for_date(date(2026, 8, 30))
+        override_events = schedule.events_for_date(date(2026, 8, 31))
+
+        self.assertEqual(
+            [(event.event_id, event.title, event.message, event.when.strftime("%H:%M")) for event in base_events],
+            [
+                (
+                    "pre-meal-1",
+                    "10 минут до 1 пп",
+                    "Через 10 минут 1 пп. Не начинай сложные задачи; закрой текущий микрошаг.",
+                    "07:05",
+                ),
+                ("meal-1", "1 пп", "1 прием пищи", "07:15"),
+            ],
+        )
+        self.assertEqual(
+            [(event.event_id, event.title, event.message, event.when.strftime("%H:%M")) for event in override_events],
+            [
+                (
+                    "pre-override-meal-4",
+                    "10 минут до 4 пп",
+                    "Через 10 минут 4 пп. Не начинай сложные задачи; закрой текущий микрошаг.",
+                    "19:15",
+                ),
+                ("override-meal-4", "4 пп", "Пересчитанный прием пищи.", "19:25"),
             ],
         )
 
@@ -267,10 +333,10 @@ class ScheduleTests(unittest.TestCase):
                 ("microservices-reading", "Микросервисы", "06:00"),
                 ("chrysostom-prayer-03", "Молитва Иоанна Златоуста 3/16", "07:00"),
                 ("water-1", "1 пв", "07:00"),
+                ("pre-meal-1", "10 минут до 1 пп", "07:05"),
                 ("meal-1", "1 пп", "07:15"),
                 ("monitoring-reading", "Мониторинг", "07:25"),
                 ("chrysostom-prayer-04", "Молитва Иоанна Златоуста 4/16", "08:00"),
-                ("morning-buffer", "Буфер / быт / подготовка к работе", "08:25"),
             ],
         )
 
@@ -373,12 +439,16 @@ class ScheduleTests(unittest.TestCase):
             [(event.event_id, event.title, event.when.strftime("%H:%M")) for event in events],
             [
                 ("water-1", "1 пв", "07:00"),
+                ("pre-meal-1", "10 минут до 1 пп", "07:05"),
                 ("meal-1", "1 пп", "07:15"),
                 ("water-2", "2 пв", "09:25"),
+                ("pre-meal-2", "10 минут до 2 пп", "09:30"),
                 ("meal-2", "2 пп", "09:40"),
                 ("water-3", "3 пв", "11:50"),
+                ("pre-meal-3", "10 минут до 3 пп", "11:55"),
                 ("meal-3", "3 пп", "12:05"),
                 ("water-4", "4 пв", "14:15"),
+                ("pre-meal-4", "10 минут до 4 пп", "14:20"),
                 ("meal-4", "4 пп", "14:30"),
             ],
         )
@@ -411,7 +481,7 @@ class ScheduleTests(unittest.TestCase):
 
         events = schedule.events_for_date(date(2026, 8, 30))
 
-        self.assertEqual([event.event_id for event in events], ["wake", "meal-1", "bed"])
+        self.assertEqual([event.event_id for event in events], ["wake", "pre-meal-1", "meal-1", "bed"])
 
     def test_next_event_uses_reference_time(self):
         schedule = Schedule.from_dict(

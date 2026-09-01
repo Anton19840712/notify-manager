@@ -9,6 +9,7 @@ from typing import Any
 
 MEAL_TITLE_PATTERN = re.compile(r"^\d+\s*пп$", re.IGNORECASE)
 MEAL_EVENT_ID_PATTERN = re.compile(r"^(?:override-)?meal-\d+$", re.IGNORECASE)
+PRE_MEAL_OFFSET_MINUTES = 10
 
 
 @dataclass(frozen=True)
@@ -104,7 +105,37 @@ class Schedule:
 
         expanded.extend(self._expand_rotating_events(day, override))
         expanded.extend(self._expand_relative_cycles(day, expanded, override))
+        expanded.extend(self._expand_pre_meal_events(day, expanded, override))
         return sorted(expanded, key=lambda event: event.when)
+
+    def _expand_pre_meal_events(
+        self,
+        day: date,
+        events: list[ScheduleEvent],
+        override: dict[str, Any],
+    ) -> list[ScheduleEvent]:
+        suppressed_events = set(str(event_id) for event_id in override.get("suppress_events", []))
+        existing_event_ids = {event.event_id for event in events}
+        expanded: list[ScheduleEvent] = []
+        for meal in events:
+            if not _is_meal_event(meal):
+                continue
+            event_id = f"pre-{meal.event_id}"
+            when = meal.when - timedelta(minutes=PRE_MEAL_OFFSET_MINUTES)
+            if event_id in suppressed_events or event_id in existing_event_ids or when.date() != day:
+                continue
+            expanded.append(
+                ScheduleEvent(
+                    event_id=event_id,
+                    title=f"{PRE_MEAL_OFFSET_MINUTES} минут до {meal.title}",
+                    message=(
+                        f"Через {PRE_MEAL_OFFSET_MINUTES} минут {meal.title}. "
+                        "Не начинай сложные задачи; закрой текущий микрошаг."
+                    ),
+                    when=when,
+                )
+            )
+        return expanded
 
     def _expand_rotating_events(
         self,

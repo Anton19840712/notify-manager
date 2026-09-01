@@ -42,13 +42,22 @@ class EventFormattingTests(unittest.TestCase):
             "21:00 - 4 пп (до приема пищи: 15 мин)\nКонтейнер.",
         )
 
-    def test_notification_text_marks_late_due_events(self):
+    def test_notification_text_omits_countdown_when_event_is_due_now(self):
+        event = ScheduleEvent("meal-4", "4 пп", "Контейнер.", datetime(2026, 9, 1, 21, 0))
+        now = datetime(2026, 9, 1, 21, 0)
+
+        self.assertEqual(
+            format_notification_text(event, now, include_current_time=True),
+            "Сейчас: 21:00\n21:00 - 4 пп\nКонтейнер.",
+        )
+
+    def test_notification_text_omits_countdown_when_event_is_late(self):
         event = ScheduleEvent("bedtime", "Отбой", "Сон.", datetime(2026, 9, 1, 22, 0))
         now = datetime(2026, 9, 1, 22, 3)
 
         self.assertEqual(
             format_notification_text(event, now, include_current_time=True),
-            "Сейчас: 22:03\n22:00 - Отбой (опоздание: 3 мин)\nСон.",
+            "Сейчас: 22:03\n22:00 - Отбой\nСон.",
         )
 
 
