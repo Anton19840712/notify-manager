@@ -196,5 +196,40 @@
         }
       ]
     }
+  ],
+  "relative_cycles": [
+    {
+      "id": "batch-cooking-3-day-cycle",
+      "kind": "after_last_meal",
+      "start_date": "2026-09-01",
+      "period_days": 3,
+      "anchor_offset_minutes": 10,
+      "items": [
+        {
+          "offset_minutes": 0,
+          "id": "batch-cooking-1",
+          "title": "Batch-cooking 1/3: рис + индейка",
+          "message": "Старт длинного цикла после последнего приема пищи: первая партия на 4 приема."
+        },
+        {
+          "offset_minutes": 30,
+          "id": "batch-cooking-2",
+          "title": "Batch-cooking 2/3: еще 4 приема",
+          "message": "Вторая партия: довести общий запас до 8 приемов."
+        },
+        {
+          "offset_minutes": 60,
+          "id": "batch-cooking-3",
+          "title": "Batch-cooking 3/3: еще 4 приема",
+          "message": "Третья партия: довести общий запас до 12 приемов на 3 дня."
+        },
+        {
+          "offset_minutes": 90,
+          "id": "batch-cooking-cleanup",
+          "title": "Контейнеры + кухня",
+          "message": "Разложить 12 приемов по контейнерам, убрать поверхности, закрыть кухню."
+        }
+      ]
+    }
   ]
 }

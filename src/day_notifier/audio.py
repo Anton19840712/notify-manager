@@ -10,8 +10,10 @@ from day_notifier.schedule import ScheduleEvent
 
 
 WAKE_UP_EVENT_ID = "wake-up"
+BEDTIME_EVENT_ID = "bedtime"
 WAKE_UP_CUE_AUDIO_PATH = Path("data") / "audio" / "rota-podem.mp3"
 MORNING_PRAYER_AUDIO_PATH = Path("data") / "audio" / "morning-prays.mp3"
+BEDTIME_AUDIO_PATH = Path("data") / "audio" / "otboj.mp3"
 WAKE_UP_CUE_DELAY_SECONDS = 2
 
 OpenAudioFile = Callable[[Path], None]
@@ -24,17 +26,21 @@ class AudioCuePlayer:
         root: Path,
         audio_path: Path = MORNING_PRAYER_AUDIO_PATH,
         cue_audio_path: Path = WAKE_UP_CUE_AUDIO_PATH,
+        bedtime_audio_path: Path = BEDTIME_AUDIO_PATH,
         cue_delay_seconds: int = WAKE_UP_CUE_DELAY_SECONDS,
         opener: OpenAudioFile | None = None,
         sleeper: Sleep | None = None,
     ) -> None:
         self.prayer_path = root / audio_path
         self.cue_path = root / cue_audio_path
+        self.bedtime_path = root / bedtime_audio_path
         self.cue_delay_seconds = cue_delay_seconds
         self._opener = opener or _open_audio_file
         self._sleeper = sleeper or time.sleep
 
     def play_for_event(self, event: ScheduleEvent) -> bool:
+        if event.event_id == BEDTIME_EVENT_ID:
+            return self._open_if_available(self.bedtime_path, "Bedtime audio")
         if event.event_id != WAKE_UP_EVENT_ID:
             return False
         played_cue = self._open_if_available(self.cue_path, "Wake-up cue audio")

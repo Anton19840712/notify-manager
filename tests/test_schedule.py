@@ -125,6 +125,101 @@ class ScheduleTests(unittest.TestCase):
             ],
         )
 
+    def test_relative_cycle_runs_every_third_day_after_last_meal_from_override(self):
+        schedule = Schedule.from_dict(
+            {
+                "events": [],
+                "cycles": [
+                    {
+                        "id": "food-cycle",
+                        "start_time": "07:00",
+                        "period_minutes": 145,
+                        "count": 4,
+                        "items": [
+                            {
+                                "offset_minutes": 15,
+                                "id_template": "meal-{n}",
+                                "title_template": "{n} пп",
+                                "message_template": "{n} прием пищи",
+                            }
+                        ],
+                    }
+                ],
+                "relative_cycles": [
+                    {
+                        "id": "batch-cooking-3-day-cycle",
+                        "kind": "after_last_meal",
+                        "start_date": "2026-09-01",
+                        "period_days": 3,
+                        "anchor_offset_minutes": 10,
+                        "items": [
+                            {
+                                "offset_minutes": 0,
+                                "id": "batch-cooking-1",
+                                "title": "Batch-cooking 1/3",
+                                "message": "Готовка 4 приемов.",
+                            },
+                            {
+                                "offset_minutes": 30,
+                                "id": "batch-cooking-2",
+                                "title": "Batch-cooking 2/3",
+                                "message": "Готовка еще 4 приемов.",
+                            },
+                            {
+                                "offset_minutes": 60,
+                                "id": "batch-cooking-3",
+                                "title": "Batch-cooking 3/3",
+                                "message": "Готовка еще 4 приемов.",
+                            },
+                            {
+                                "offset_minutes": 90,
+                                "id": "batch-cooking-cleanup",
+                                "title": "Контейнеры + кухня",
+                                "message": "Разложить 12 приемов и убрать поверхности.",
+                            },
+                        ],
+                    }
+                ],
+            },
+            day_overrides={
+                "2026-09-01": {
+                    "suppress_cycles": ["food-cycle"],
+                    "events": [
+                        {
+                            "id": "override-meal-4",
+                            "time": "19:07",
+                            "title": "4 пп",
+                            "message": "Последний прием пищи.",
+                        }
+                    ],
+                }
+            },
+        )
+
+        cooking_day = schedule.events_for_date(date(2026, 9, 1))
+        off_day = schedule.events_for_date(date(2026, 9, 2))
+        next_cooking_day = schedule.events_for_date(date(2026, 9, 4))
+
+        self.assertEqual(
+            [(event.event_id, event.when.strftime("%H:%M")) for event in cooking_day if event.event_id.startswith("batch-cooking")],
+            [
+                ("batch-cooking-1", "19:17"),
+                ("batch-cooking-2", "19:47"),
+                ("batch-cooking-3", "20:17"),
+                ("batch-cooking-cleanup", "20:47"),
+            ],
+        )
+        self.assertFalse(any(event.event_id.startswith("batch-cooking") for event in off_day))
+        self.assertEqual(
+            [(event.event_id, event.when.strftime("%H:%M")) for event in next_cooking_day if event.event_id.startswith("batch-cooking")],
+            [
+                ("batch-cooking-1", "14:40"),
+                ("batch-cooking-2", "15:10"),
+                ("batch-cooking-3", "15:40"),
+                ("batch-cooking-cleanup", "16:10"),
+            ],
+        )
+
     def test_default_schedule_contains_detailed_morning_learning_sequence(self):
         schedule = Schedule.from_dict(
             json.loads((ROOT / "config" / "schedule.json").read_text(encoding="utf-8"))
@@ -168,6 +263,27 @@ class ScheduleTests(unittest.TestCase):
         self.assertEqual(prayers[-1].title, "Молитва Иоанна Златоуста 16/16")
         self.assertIn("не лиши мене небесных Твоих благ", prayers[0].message)
         self.assertIn("даждь ми мысль благу", prayers[-1].message)
+
+    def test_default_schedule_contains_batch_cooking_every_third_day(self):
+        schedule = Schedule.from_dict(
+            json.loads((ROOT / "config" / "schedule.json").read_text(encoding="utf-8"))
+        )
+
+        first_cooking_day = schedule.events_for_date(date(2026, 9, 1))
+        off_day = schedule.events_for_date(date(2026, 9, 2))
+        next_cooking_day = schedule.events_for_date(date(2026, 9, 4))
+
+        self.assertEqual(
+            [(event.title, event.when.strftime("%H:%M")) for event in first_cooking_day if event.event_id.startswith("batch-cooking")],
+            [
+                ("Batch-cooking 1/3: рис + индейка", "14:40"),
+                ("Batch-cooking 2/3: еще 4 приема", "15:10"),
+                ("Batch-cooking 3/3: еще 4 приема", "15:40"),
+                ("Контейнеры + кухня", "16:10"),
+            ],
+        )
+        self.assertFalse(any(event.event_id.startswith("batch-cooking") for event in off_day))
+        self.assertTrue(any(event.event_id == "batch-cooking-1" for event in next_cooking_day))
 
     def test_expands_water_and_food_cycle(self):
         schedule = Schedule.from_dict(

@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from typing import Any
+
+MEAL_TITLE_PATTERN = re.compile(r"^\d+\s*пп$", re.IGNORECASE)
+MEAL_EVENT_ID_PATTERN = re.compile(r"^(?:override-)?meal-\d+$", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -24,10 +28,12 @@ class Schedule:
         self,
         events: list[dict[str, Any]] | None = None,
         cycles: list[dict[str, Any]] | None = None,
+        relative_cycles: list[dict[str, Any]] | None = None,
         day_overrides: dict[str, dict[str, Any]] | None = None,
     ) -> None:
         self._events = events or []
         self._cycles = cycles or []
+        self._relative_cycles = relative_cycles or []
         self._day_overrides = day_overrides or {}
 
     @classmethod
@@ -39,6 +45,7 @@ class Schedule:
         return cls(
             events=list(data.get("events", [])),
             cycles=list(data.get("cycles", [])),
+            relative_cycles=list(data.get("relative_cycles", [])),
             day_overrides=day_overrides,
         )
 
@@ -92,7 +99,42 @@ class Schedule:
                 )
             )
 
+        expanded.extend(self._expand_relative_cycles(day, expanded, override))
         return sorted(expanded, key=lambda event: event.when)
+
+    def _expand_relative_cycles(
+        self,
+        day: date,
+        events: list[ScheduleEvent],
+        override: dict[str, Any],
+    ) -> list[ScheduleEvent]:
+        suppressed_cycles = set(str(cycle_id) for cycle_id in override.get("suppress_relative_cycles", []))
+        expanded: list[ScheduleEvent] = []
+        for cycle in self._relative_cycles:
+            cycle_id = str(cycle.get("id", ""))
+            if cycle_id in suppressed_cycles:
+                continue
+            if str(cycle.get("kind", "")) != "after_last_meal":
+                continue
+            if not _is_cycle_day(day, cycle):
+                continue
+            last_meal = _last_meal_event(events)
+            if last_meal is None:
+                continue
+            anchor = last_meal.when + timedelta(minutes=int(cycle.get("anchor_offset_minutes", 0)))
+            for item in cycle.get("items", []):
+                when = anchor + timedelta(minutes=int(item.get("offset_minutes", 0)))
+                if when.date() != day:
+                    continue
+                expanded.append(
+                    ScheduleEvent(
+                        event_id=str(item["id"]),
+                        title=str(item["title"]),
+                        message=str(item.get("message", item["title"])),
+                        when=when,
+                    )
+                )
+        return expanded
 
     def next_event(self, reference: datetime) -> ScheduleEvent:
         today_events = [event for event in self.events_for_date(reference.date()) if event.when > reference]
@@ -135,3 +177,21 @@ def load_day_overrides(override_dir: Path) -> dict[str, dict[str, Any]]:
 def _parse_time(value: str) -> time:
     hour, minute = value.split(":", 1)
     return time(hour=int(hour), minute=int(minute))
+
+
+def _is_cycle_day(day: date, cycle: dict[str, Any]) -> bool:
+    start_day = date.fromisoformat(str(cycle["start_date"]))
+    period_days = int(cycle.get("period_days", 1))
+    if period_days < 1:
+        raise ValueError("relative cycle period_days must be at least 1")
+    delta_days = (day - start_day).days
+    return delta_days >= 0 and delta_days % period_days == 0
+
+
+def _last_meal_event(events: list[ScheduleEvent]) -> ScheduleEvent | None:
+    meals = [event for event in events if _is_meal_event(event)]
+    return max(meals, key=lambda event: event.when) if meals else None
+
+
+def _is_meal_event(event: ScheduleEvent) -> bool:
+    return bool(MEAL_TITLE_PATTERN.match(event.title.strip()) or MEAL_EVENT_ID_PATTERN.match(event.event_id))
