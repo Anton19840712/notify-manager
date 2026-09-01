@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a `2 mi done` style command that marks a meal completed now and recalculates remaining meal reminders for today.
+**Goal:** Add a `/2 mi done` and `2 mi done` style command that marks a meal completed now and recalculates remaining meal reminders for today.
 
 **Architecture:** Reuse the existing one-day override and emergency meal helpers. Add a food-only override writer that preserves non-food override events, add command parsing in `commands.py`, and teach the Telegram client to pass through plain meal-done text.
 
@@ -13,7 +13,7 @@
 ## File Structure
 
 - Modify `src/day_notifier/overrides.py`: add meal-number detection and a writer that recalculates remaining meals while preserving non-food override events.
-- Modify `src/day_notifier/commands.py`: parse `2 mi done`, aliases, and `/mi 2 done`.
+- Modify `src/day_notifier/commands.py`: parse `/2 mi done`, `2 mi done`, aliases, and `/mi 2 done`.
 - Modify `src/day_notifier/telegram_client.py`: accept plain meal-done commands from Telegram.
 - Modify `README.md`: document the new command.
 - Modify tests:
@@ -59,7 +59,7 @@ Commit mirror changes with `feat: recalc meals from done command mirror`.
 
 - [x] **Step 1: Write failing command tests**
 
-Add command tests for `2 mi done`, `2 pp done`, `2 пп done`, and `/mi 2 done`. The main test should assert the reply includes:
+Add command tests for `/2 mi done`, `/ 2 mi done`, `2 mi done`, `2 pp done`, `2 пп done`, and `/mi 2 done`. The main test should assert the reply includes:
 
 ```text
 Принял: 2 пп завершен в 12:25.
@@ -94,7 +94,7 @@ Commit mirror changes with `feat: add meal done command mirror`.
 
 - [x] **Step 1: Write failing tests**
 
-Add a test that plain `2 mi done` is returned by `get_commands()`, while unrelated plain text is ignored.
+Add a test that plain `2 mi done` is returned by `get_commands()`, while unrelated plain text is ignored. Slash-number forms are already command-like because they start with `/`.
 
 - [x] **Step 2: Run focused tests**
 
@@ -122,11 +122,11 @@ Commit mirror changes with `feat: accept meal done telegram text mirror`.
 
 - [x] **Step 1: Update README**
 
-Document `2 mi done`, aliases, and the fact that it recalculates remaining meals only for today.
+Document `/2 mi done`, `2 mi done`, aliases, and the fact that it recalculates remaining meals only for today.
 
 - [x] **Step 2: Full mirror verification**
 
-Run tests, compileall, diff check, TODO/FIXME scan, and secret scan.
+Run tests, compileall, diff check, placeholder-marker scan, and secret scan.
 
 - [x] **Step 3: Copy to private project**
 
@@ -146,4 +146,4 @@ Commit private changes, push `origin/main`, restart the notifier, check `-Status
 
 - Spec coverage: the plan covers command aliases, active-day meal counting, backward/forward timing, base flow preservation, shifted override preservation, Telegram input, README, private sync, push, and restart.
 - Placeholder scan: no unfilled implementation placeholders remain.
-- Type consistency: `write_meal_done_override`, meal numbers, `2 mi done`, and one-day override terms are consistent across tasks.
+- Type consistency: `write_meal_done_override`, meal numbers, `/2 mi done`, `2 mi done`, and one-day override terms are consistent across tasks.

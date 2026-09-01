@@ -17,9 +17,9 @@ from day_notifier.overrides import (
 from day_notifier.schedule import Schedule, ScheduleEvent
 
 
-MEAL_DONE_USAGE = "Используй: 2 mi done, 2 pp done, 2 пп done или /mi 2 done."
+MEAL_DONE_USAGE = "Используй: /2 mi done, 2 mi done, 2 pp done, 2 пп done или /mi 2 done."
 MEAL_DONE_PATTERNS = [
-    re.compile(r"^(\d+)\s+(?:mi|pp|пп)\s+done$", re.IGNORECASE),
+    re.compile(r"^/?\s*(\d+)\s+(?:mi|pp|пп)\s+done$", re.IGNORECASE),
     re.compile(r"^/mi\s+(\d+)\s+done$", re.IGNORECASE),
 ]
 
@@ -108,7 +108,7 @@ def handle_command(text: str, context: CommandContext) -> CommandResult:
     return CommandResult(
         reply=(
             "Команды: /summary, /today, /next, /done, /snooze 10, "
-            "/recalc food 4, 2 mi done, /sd 10:00, /отбой, /desktop on|off|status, /inbox текст"
+            "/recalc food 4, /2 mi done, /sd 10:00, /отбой, /desktop on|off|status, /inbox текст"
         )
     )
 

@@ -206,7 +206,14 @@ class CommandTests(unittest.TestCase):
         self.assertNotIn("пв", override_text)
 
     def test_meal_done_command_accepts_aliases(self):
-        for text in ["2 pp done", "2 пп done", "/mi 2 done"]:
+        for text in [
+            "2 pp done",
+            "2 пп done",
+            "/2 mi done",
+            "/2 pp done",
+            "/ 2 mi done",
+            "/mi 2 done",
+        ]:
             with self.subTest(text=text):
                 with tempfile.TemporaryDirectory() as temp_dir:
                     context = self.make_context(Path(temp_dir) / "inbox.md")
@@ -225,7 +232,7 @@ class CommandTests(unittest.TestCase):
 
             result = handle_command("0 mi done", context)
 
-        self.assertIn("Используй: 2 mi done", result.reply)
+        self.assertIn("Используй: /2 mi done", result.reply)
         self.assertFalse(context.override_dir.exists())
 
     def test_sd_command_writes_override_and_reloads_schedule(self):

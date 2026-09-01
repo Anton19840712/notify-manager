@@ -12,6 +12,8 @@ Support these command forms:
 2 mi done
 2 pp done
 2 пп done
+/2 mi done
+/ 2 mi done
 /mi 2 done
 ```
 
@@ -19,7 +21,7 @@ Support these command forms:
 
 ## Semantics
 
-`2 mi done` means: "the second meal has just been completed at the current time."
+`2 mi done` and `/2 mi done` mean: "the second meal has just been completed at the current time."
 
 The notifier should calculate the remaining meals from the currently active schedule for today. If the active day contains meals 1-4 and the user sends `2 mi done`, the notifier creates reminders for meals 3 and 4.
 
@@ -55,7 +57,7 @@ It should:
 
 ## Telegram Input
 
-The Telegram polling path should accept plain `2 mi done`, not only slash commands. It should still ignore unrelated plain text.
+The Telegram polling path should accept plain `2 mi done` and slash-number forms like `/2 mi done`. It should still ignore unrelated plain text.
 
 ## Error Handling
 
@@ -67,7 +69,7 @@ If the meal number is the last known meal for the active day, the command suppre
 
 Add tests before implementation:
 
-- command parsing for `2 mi done`, `2 pp done`, `2 пп done`, and `/mi 2 done`;
+- command parsing for `2 mi done`, `2 pp done`, `2 пп done`, `/2 mi done`, `/ 2 mi done`, and `/mi 2 done`;
 - command writes today's override with `14:40 3 пп` and `17:05 4 пп` for `12:25`;
 - no separate `пв` reminders are created;
 - shifted non-food override events are preserved;
