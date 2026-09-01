@@ -155,21 +155,9 @@ class ScheduleTests(unittest.TestCase):
                         "items": [
                             {
                                 "offset_minutes": 0,
-                                "id": "batch-cooking-1",
-                                "title": "Batch-cooking 1/3",
-                                "message": "Готовка 4 приемов.",
-                            },
-                            {
-                                "offset_minutes": 30,
-                                "id": "batch-cooking-2",
-                                "title": "Batch-cooking 2/3",
-                                "message": "Готовка еще 4 приемов.",
-                            },
-                            {
-                                "offset_minutes": 60,
-                                "id": "batch-cooking-3",
-                                "title": "Batch-cooking 3/3",
-                                "message": "Готовка еще 4 приемов.",
+                                "id": "batch-cooking",
+                                "title": "Batch-cooking: 12 приемов на 3 дня",
+                                "message": "Один длинный цикл готовки.",
                             },
                             {
                                 "offset_minutes": 90,
@@ -203,9 +191,7 @@ class ScheduleTests(unittest.TestCase):
         self.assertEqual(
             [(event.event_id, event.when.strftime("%H:%M")) for event in cooking_day if event.event_id.startswith("batch-cooking")],
             [
-                ("batch-cooking-1", "19:17"),
-                ("batch-cooking-2", "19:47"),
-                ("batch-cooking-3", "20:17"),
+                ("batch-cooking", "19:17"),
                 ("batch-cooking-cleanup", "20:47"),
             ],
         )
@@ -213,9 +199,7 @@ class ScheduleTests(unittest.TestCase):
         self.assertEqual(
             [(event.event_id, event.when.strftime("%H:%M")) for event in next_cooking_day if event.event_id.startswith("batch-cooking")],
             [
-                ("batch-cooking-1", "14:40"),
-                ("batch-cooking-2", "15:10"),
-                ("batch-cooking-3", "15:40"),
+                ("batch-cooking", "14:40"),
                 ("batch-cooking-cleanup", "16:10"),
             ],
         )
@@ -276,14 +260,12 @@ class ScheduleTests(unittest.TestCase):
         self.assertEqual(
             [(event.title, event.when.strftime("%H:%M")) for event in first_cooking_day if event.event_id.startswith("batch-cooking")],
             [
-                ("Batch-cooking 1/3: рис + индейка", "14:40"),
-                ("Batch-cooking 2/3: еще 4 приема", "15:10"),
-                ("Batch-cooking 3/3: еще 4 приема", "15:40"),
+                ("Batch-cooking: 12 приемов на 3 дня", "14:40"),
                 ("Контейнеры + кухня", "16:10"),
             ],
         )
         self.assertFalse(any(event.event_id.startswith("batch-cooking") for event in off_day))
-        self.assertTrue(any(event.event_id == "batch-cooking-1" for event in next_cooking_day))
+        self.assertTrue(any(event.event_id == "batch-cooking" for event in next_cooking_day))
 
     def test_expands_water_and_food_cycle(self):
         schedule = Schedule.from_dict(
