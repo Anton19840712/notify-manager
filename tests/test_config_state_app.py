@@ -324,8 +324,11 @@ class ConfigStateAppTests(unittest.TestCase):
         result = app.sync_bot_commands()
 
         self.assertIn("Синхронизировал команды Telegram-меню", result)
-        self.assertEqual(calls[0][0], "set_my_commands")
+        self.assertEqual([call[0] for call in calls], ["set_my_commands", "set_my_commands"])
+        self.assertIsNone(calls[0][2])
+        self.assertEqual(calls[1][2], {"type": "all_private_chats"})
         self.assertIn({"command": "mi1", "description": "съел 1 прием пищи"}, calls[0][1])
+        self.assertIn({"command": "mi1", "description": "съел 1 прием пищи"}, calls[1][1])
 
 
 class RecordingTelegram:
@@ -345,8 +348,8 @@ class RecordingTelegram:
         self.calls.append(("delete_messages", list(message_ids)))
         return DeleteSummary(deleted=len(message_ids), failed=0)
 
-    def set_my_commands(self, commands):
-        self.calls.append(("set_my_commands", commands))
+    def set_my_commands(self, commands, scope=None, language_code=None):
+        self.calls.append(("set_my_commands", commands, scope, language_code))
         return True
 
 

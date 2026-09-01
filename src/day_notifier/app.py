@@ -160,8 +160,12 @@ class NotifierApp:
         if self.telegram is None:
             return "Telegram-меню не синхронизировано: настройки Telegram отсутствуют."
         commands = bot_command_payload()
+        scopes: list[dict[str, str] | None] = [None, {"type": "all_private_chats"}]
         try:
-            synced = self.telegram.set_my_commands(commands)
+            synced = all(
+                self.telegram.set_my_commands(commands, scope=scope)
+                for scope in scopes
+            )
         except Exception:
             logging.exception("Telegram bot command sync failed")
             return "Не смог синхронизировать Telegram-меню: Telegram вернул ошибку."

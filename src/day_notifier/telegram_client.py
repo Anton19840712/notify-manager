@@ -39,8 +39,18 @@ class TelegramClient:
         message_id = result.get("message_id")
         return int(message_id) if message_id is not None else None
 
-    def set_my_commands(self, commands: list[dict[str, str]]) -> bool:
-        response = self._call("setMyCommands", {"commands": commands})
+    def set_my_commands(
+        self,
+        commands: list[dict[str, str]],
+        scope: dict[str, Any] | None = None,
+        language_code: str | None = None,
+    ) -> bool:
+        payload: dict[str, Any] = {"commands": commands}
+        if scope is not None:
+            payload["scope"] = scope
+        if language_code is not None:
+            payload["language_code"] = language_code
+        response = self._call("setMyCommands", payload)
         return bool(response.get("result", False))
 
     def get_commands(self, offset: int | None = None) -> list[TelegramCommand]:

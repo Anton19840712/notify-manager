@@ -62,6 +62,26 @@ class TelegramClientTests(unittest.TestCase):
             },
         )
 
+    def test_set_my_commands_can_target_private_chat_scope(self):
+        transport = FakeTransport({"ok": True, "result": True})
+        client = TelegramClient("123:abc", "456", transport=transport)
+
+        result = client.set_my_commands(
+            [{"command": "summary", "description": "ближайшие события"}],
+            scope={"type": "all_private_chats"},
+        )
+
+        url, payload = transport.calls[0]
+        self.assertTrue(result)
+        self.assertTrue(url.endswith("/bot123:abc/setMyCommands"))
+        self.assertEqual(
+            json.loads(payload.decode("utf-8")),
+            {
+                "commands": [{"command": "summary", "description": "ближайшие события"}],
+                "scope": {"type": "all_private_chats"},
+            },
+        )
+
     def test_get_commands_filters_by_chat_id(self):
         transport = FakeTransport(
             {
