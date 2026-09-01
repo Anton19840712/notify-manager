@@ -172,7 +172,7 @@ class ScheduleTests(unittest.TestCase):
                 (
                     "pre-meal-1",
                     "10 минут до 1 пп",
-                    "Через 10 минут 1 пп. Не начинай сложные задачи; закрой текущий микрошаг.",
+                    "Через 10 минут 1 пп. Выбери 1 микрозадачу: пыль, вещи по местам, пол, бритье или inbox. Сложное не открывать.",
                     "07:05",
                 ),
                 ("meal-1", "1 пп", "1 прием пищи", "07:15"),
@@ -184,12 +184,20 @@ class ScheduleTests(unittest.TestCase):
                 (
                     "pre-override-meal-4",
                     "10 минут до 4 пп",
-                    "Через 10 минут 4 пп. Не начинай сложные задачи; закрой текущий микрошаг.",
+                    "Через 10 минут 4 пп. Выбери 1 микрозадачу: пыль, вещи по местам, пол, бритье или inbox. Сложное не открывать.",
                     "19:15",
                 ),
                 ("override-meal-4", "4 пп", "Пересчитанный прием пищи.", "19:25"),
             ],
         )
+
+    def test_ten_minute_task_catalog_exists_for_pre_meal_reminders(self):
+        text = (ROOT / "data" / "ten-minute-tasks.md").read_text(encoding="utf-8")
+
+        self.assertIn("Протереть пыль", text)
+        self.assertIn("Вещи по местам", text)
+        self.assertIn("Побриться", text)
+        self.assertIn("Не брать в 10 минут", text)
 
     def test_relative_cycle_runs_every_third_day_after_last_meal_from_override(self):
         schedule = Schedule.from_dict(

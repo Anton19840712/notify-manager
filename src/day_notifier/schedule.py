@@ -130,7 +130,8 @@ class Schedule:
                     title=f"{PRE_MEAL_OFFSET_MINUTES} минут до {meal.title}",
                     message=(
                         f"Через {PRE_MEAL_OFFSET_MINUTES} минут {meal.title}. "
-                        "Не начинай сложные задачи; закрой текущий микрошаг."
+                        "Выбери 1 микрозадачу: пыль, вещи по местам, пол, бритье или inbox. "
+                        "Сложное не открывать."
                     ),
                     when=when,
                 )

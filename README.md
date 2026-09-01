@@ -165,7 +165,7 @@ The default schedule uses a 145-minute water/food cycle:
 - `2 пв` at `09:25`, `2 пп` at `09:40`.
 - `3 пв` at `11:50`, `3 пп` at `12:05`.
 - `4 пв` at `14:15`, `4 пп` at `14:30`.
-- Every active `пп` gets an automatic 10-minute pre-reminder so complex tasks do not start right before food.
+- Every active `пп` gets an automatic 10-minute pre-reminder with a short-task prompt. The fuller catalog is in `data/ten-minute-tasks.md`.
 - Every third day from `2026-09-01`, batch-cooking starts 10 minutes after the last active `пп` event. If today's meals are shifted by a one-day override, the cooking cycle follows the shifted last meal.
 - Batch-cooking is one long block: cook 12 prepared meals, put them into containers, clean the kitchen surfaces, and close the kitchen.
 
