@@ -9,10 +9,10 @@ Let the user send a Telegram command to the already-running local notifier proce
 Start with one explicit command:
 
 ```text
-/shift day 10:00
+/sd 10:00
 ```
 
-Aliases can be added later after real use, but the MVP should avoid natural-language parsing mistakes. The command means: "for today, rebuild start-of-day events as if the day began at 10:00."
+The plain text form `sd 10:00` is accepted as the same command. The command means: "for today, rebuild start-of-day events as if the day began at 10:00."
 
 ## One-Day Override Model
 
@@ -75,7 +75,7 @@ Example:
 17:15-17:25  4 пп
 ```
 
-If the user has already eaten some meals, that remains a separate emergency food command such as `/recalc food 2 ...`, not part of the first `/shift day` MVP.
+If the user has already eaten some meals, that remains a separate emergency food command such as `/recalc food 2 ...`, not part of the first `/sd` MVP.
 
 ## Telegram Feedback
 
@@ -109,5 +109,5 @@ Add tests before implementation:
 - schedule overrides can suppress fixed events through `suppress_events`;
 - shift override generation preserves base schedule for other dates;
 - emergency meal starts use `10 minutes + 2:15`, not `2:15` between starts;
-- `/shift day 10:00` writes today's override, reloads the schedule, and replies with the recalculated events;
-- invalid `/shift` input does not write files.
+- `/sd 10:00` writes today's override, reloads the schedule, and replies with the recalculated events;
+- invalid `/sd` input does not write files.

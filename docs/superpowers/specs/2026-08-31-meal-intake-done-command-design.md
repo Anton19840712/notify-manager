@@ -49,7 +49,7 @@ It should:
 
 - suppress the base `water-food-cycle` for today;
 - replace today's food/water override events with recalculated meal-only events;
-- preserve non-food override events, such as shifted morning reminders from `/shift day 10:00`;
+- preserve non-food override events, such as shifted morning reminders from `/sd 10:00`;
 - preserve `suppress_events` if they already exist;
 - keep tomorrow and later days on the base schedule.
 

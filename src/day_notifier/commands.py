@@ -83,7 +83,7 @@ def handle_command(text: str, context: CommandContext) -> CommandResult:
     if command == "/recalc":
         return CommandResult(reply=_recalc(argument, context))
 
-    if command == "/shift":
+    if command in {"/sd", "sd"}:
         return CommandResult(reply=_shift(argument, context))
 
     if command == "/inbox":
@@ -108,7 +108,7 @@ def handle_command(text: str, context: CommandContext) -> CommandResult:
     return CommandResult(
         reply=(
             "Команды: /summary, /today, /next, /done, /snooze 10, "
-            "/recalc food 4, 2 mi done, /shift day 10:00, /отбой, /desktop on|off|status, /inbox текст"
+            "/recalc food 4, 2 mi done, /sd 10:00, /отбой, /desktop on|off|status, /inbox текст"
         )
     )
 
@@ -207,8 +207,8 @@ def _meal_done(meal_number: int, context: CommandContext) -> str:
 
 def _shift(argument: str, context: CommandContext) -> str:
     parts = argument.strip().split()
-    if len(parts) != 2 or parts[0].lower() not in {"day", "день"} or not _looks_like_time(parts[1]):
-        return "Используй: /shift day 10:00."
+    if len(parts) != 1 or not _looks_like_time(parts[0]):
+        return "Используй: /sd 10:00."
     if context.override_dir is None or context.schedule_path is None:
         return "Перенос дня недоступен в этом режиме."
 
@@ -218,14 +218,14 @@ def _shift(argument: str, context: CommandContext) -> str:
             override_dir=context.override_dir,
             schedule_data=schedule_data,
             day=context.now().date(),
-            start_time=parts[1],
+            start_time=parts[0],
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         return f"Не смог перенести день: {exc}"
 
     if context.reload_schedule is not None:
         context.reload_schedule()
-    return _format_shifted_day_result(parts[1], data)
+    return _format_shifted_day_result(parts[0], data)
 
 
 def _format_event(prefix: str, event: ScheduleEvent) -> str:

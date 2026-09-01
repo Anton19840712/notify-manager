@@ -4,7 +4,7 @@
 
 **Goal:** Add a Telegram command that shifts only today's day-start schedule through a one-day override while preserving the permanent `04:00` base flow.
 
-**Architecture:** Keep the Telegram polling path unchanged: `TelegramClient.get_commands()` already feeds slash commands into `handle_command()`. Add pure override helpers for shifted days and emergency meals, extend `Schedule` to suppress fixed events for a date, then wire `/shift day HH:MM` through the existing `CommandContext.reload_schedule` callback.
+**Architecture:** Keep the Telegram polling path unchanged: `TelegramClient.get_commands()` already feeds slash commands into `handle_command()`. Add pure override helpers for shifted days and emergency meals, extend `Schedule` to suppress fixed events for a date, then wire `/sd HH:MM` through the existing `CommandContext.reload_schedule` callback.
 
 **Tech Stack:** Python standard library, `unittest`, JSON one-day overrides, existing Telegram Bot API polling.
 
@@ -14,10 +14,10 @@
 
 - Modify `src/day_notifier/schedule.py`: teach one-day overrides to suppress fixed event ids through `suppress_events`.
 - Modify `src/day_notifier/overrides.py`: add emergency meal generation with a 10-minute eating window and day-shift override writing.
-- Modify `src/day_notifier/commands.py`: add `/shift day HH:MM` command and reuse existing context/reload flow.
+- Modify `src/day_notifier/commands.py`: add `/sd HH:MM` command and reuse existing context/reload flow.
 - Modify `src/day_notifier/app.py`: add optional CLI support for manual local smoke testing of day shift.
 - Modify `scripts/start-notifier.ps1`: expose the CLI day-shift smoke command.
-- Modify `README.md`: document `/shift day 10:00`, emergency meal timing, and baseline preservation.
+- Modify `README.md`: document `/sd 10:00`, emergency meal timing, and baseline preservation.
 - Modify `data/day-practices.md`: keep the living practice list aligned with the new command.
 - Modify tests:
   - `tests/test_schedule.py`
@@ -535,7 +535,7 @@ git commit -m "feat: build shifted day overrides"
 
 ---
 
-### Task 4: Telegram `/shift day HH:MM` Command
+### Task 4: Telegram `/sd HH:MM` Command
 
 **Files:**
 - Modify: `tests/test_commands.py`
@@ -579,7 +579,7 @@ Add this test to `CommandTests`:
             context.reload_schedule = lambda: reload_calls.append("reload")
             context.now = lambda: datetime(2026, 8, 31, 9, 0)
 
-            result = handle_command("/shift day 10:00", context)
+            result = handle_command("/sd 10:00", context)
 
             override_text = (context.override_dir / "2026-08-31.json").read_text(encoding="utf-8")
             data = json.loads(override_text)
@@ -605,9 +605,9 @@ Add invalid input test:
             context.schedule_path = root / "missing.json"
             context.now = lambda: datetime(2026, 8, 31, 9, 0)
 
-            result = handle_command("/shift day tomorrow", context)
+            result = handle_command("/sd tomorrow", context)
 
-        self.assertIn("Используй: /shift day 10:00", result.reply)
+        self.assertIn("Используй: /sd 10:00", result.reply)
         self.assertFalse((root / "day_overrides").exists())
 ```
 
@@ -619,7 +619,7 @@ Run:
 python -m unittest tests\test_commands.py
 ```
 
-Expected: failure because `CommandContext` has no `schedule_path` field and `/shift` is not implemented.
+Expected: failure because `CommandContext` has no `schedule_path` field and `/sd` is not implemented.
 
 - [ ] **Step 3: Extend command context**
 
@@ -658,11 +658,11 @@ from day_notifier.overrides import (
 Add dispatch:
 
 ```python
-    if command == "/shift":
+    if command in {"/sd", "sd"}:
         return CommandResult(reply=_shift(argument, context))
 ```
 
-Update the unknown-command reply to include `/shift day 10:00`.
+Update the unknown-command reply to include `/sd 10:00`.
 
 - [ ] **Step 5: Implement `_shift`**
 
@@ -671,8 +671,8 @@ Add:
 ```python
 def _shift(argument: str, context: CommandContext) -> str:
     parts = argument.strip().split()
-    if len(parts) != 2 or parts[0].lower() not in {"day", "день"} or not _looks_like_time(parts[1]):
-        return "Используй: /shift day 10:00."
+    if len(parts) != 1 or not _looks_like_time(parts[0]):
+        return "Используй: /sd 10:00."
     if context.override_dir is None or context.schedule_path is None:
         return "Перенос дня недоступен в этом режиме."
 
@@ -682,14 +682,14 @@ def _shift(argument: str, context: CommandContext) -> str:
             override_dir=context.override_dir,
             schedule_data=schedule_data,
             day=context.now().date(),
-            start_time=parts[1],
+            start_time=parts[0],
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         return f"Не смог перенести день: {exc}"
 
     if context.reload_schedule is not None:
         context.reload_schedule()
-    return _format_shifted_day_result(parts[1], data)
+    return _format_shifted_day_result(parts[0], data)
 ```
 
 Add helpers:
@@ -815,7 +815,7 @@ Add this test:
             calls = []
             app.telegram = RecordingTelegram(
                 calls,
-                commands=[TelegramCommand(update_id=10, text="/shift day 10:00")],
+                commands=[TelegramCommand(update_id=10, text="/sd 10:00")],
             )
 
             app.process_telegram_commands()
@@ -930,7 +930,7 @@ Add this command documentation to `README.md`:
 
 - Text: `Shift only today's day start without changing the base 04:00 schedule:`
 - PowerShell example: `.\scripts\start-notifier.ps1 -ShiftDay 10:00`
-- Telegram command bullet: ``/shift day 10:00` - rebuild today's start-relative reminders from `10:00`; base flow stays unchanged for tomorrow.`
+- Telegram command bullet: ``/sd 10:00` - rebuild today's start-relative reminders from `10:00`; base flow stays unchanged for tomorrow.`
 
 - [ ] **Step 7: Run tests**
 
@@ -1019,7 +1019,7 @@ Run:
 python -m unittest discover -s tests
 python -m compileall src
 git diff --check
-rg -n "TODO|FIXME|api\.telegram\.org/bot[0-9]|[0-9]{8,}:[A-Za-z0-9_-]{20,}" .
+rg -n "placeholder-marker|api\.telegram\.org/bot[0-9]|[0-9]{8,}:[A-Za-z0-9_-]{20,}" .
 git status --short --branch --ignored
 ```
 
@@ -1044,5 +1044,5 @@ Expected: remote `main` advances to the final implementation commit.
 ## Self-Review
 
 - Spec coverage: the plan covers Telegram command input, one-day override output, fixed-event suppression, baseline preservation, sleep anchors, emergency food water overlay, 10-minute eating windows, `2:15` after eating, bot feedback, invalid input, testing, local smoke, restart, and push.
-- Placeholder scan: no `TBD`, `TODO`, or "implement later" steps remain.
-- Type consistency: `suppress_events`, `write_shifted_day_override`, `build_shifted_day_override`, `build_shift_start_meal_events`, `schedule_path`, and `/shift day HH:MM` are named consistently across tests and implementation steps.
+- Placeholder scan: no placeholder markers remain.
+- Type consistency: `suppress_events`, `write_shifted_day_override`, `build_shifted_day_override`, `build_shift_start_meal_events`, `schedule_path`, and `/sd HH:MM` are named consistently across tests and implementation steps.

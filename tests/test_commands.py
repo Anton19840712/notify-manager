@@ -228,7 +228,7 @@ class CommandTests(unittest.TestCase):
         self.assertIn("Используй: 2 mi done", result.reply)
         self.assertFalse(context.override_dir.exists())
 
-    def test_shift_day_command_writes_override_and_reloads_schedule(self):
+    def test_sd_command_writes_override_and_reloads_schedule(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             schedule_path = root / "schedule.json"
@@ -266,7 +266,7 @@ class CommandTests(unittest.TestCase):
             context.reload_schedule = lambda: reload_calls.append("reload")
             context.now = lambda: datetime(2026, 8, 31, 9, 0)
 
-            result = handle_command("/shift day 10:00", context)
+            result = handle_command("/sd 10:00", context)
 
             override_text = (context.override_dir / "2026-08-31.json").read_text(encoding="utf-8")
             data = json.loads(override_text)
@@ -280,7 +280,33 @@ class CommandTests(unittest.TestCase):
         self.assertIn("wake-up", data["suppress_events"])
         self.assertNotIn("пв", override_text)
 
-    def test_shift_day_command_rejects_invalid_time_without_writing_override(self):
+    def test_sd_command_accepts_plain_text_alias(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            schedule_path = root / "schedule.json"
+            schedule_path.write_text(
+                json.dumps(
+                    {
+                        "events": [
+                            {"id": "wake-up", "time": "04:00", "title": "Подъем", "message": "Подъем"},
+                            {"id": "bedtime", "time": "22:00", "title": "Отбой", "message": "Сон"},
+                        ],
+                        "cycles": [],
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+            context = self.make_context(root / "inbox.md")
+            context.override_dir = root / "day_overrides"
+            context.schedule_path = schedule_path
+            context.now = lambda: datetime(2026, 8, 31, 9, 0)
+
+            result = handle_command("sd 10:00", context)
+
+        self.assertIn("Перенес день на 10:00", result.reply)
+
+    def test_sd_command_rejects_invalid_time_without_writing_override(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             context = self.make_context(root / "inbox.md")
@@ -288,9 +314,9 @@ class CommandTests(unittest.TestCase):
             context.schedule_path = root / "missing.json"
             context.now = lambda: datetime(2026, 8, 31, 9, 0)
 
-            result = handle_command("/shift day tomorrow", context)
+            result = handle_command("/sd tomorrow", context)
 
-        self.assertIn("Используй: /shift day 10:00", result.reply)
+        self.assertIn("Используй: /sd 10:00", result.reply)
         self.assertFalse((root / "day_overrides").exists())
 
     def test_bedtime_cleanup_command_uses_cleanup_callback(self):

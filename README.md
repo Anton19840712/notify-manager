@@ -17,7 +17,7 @@ The wake-up event first opens `data/audio/rota-podem.mp3`, waits 2 seconds, then
 
 ## Hourly Prayers
 
-The default schedule has Saint John Chrysostom prayer reminders every hour from `05:00` through `20:00`: `05:00` is prayer 1, `06:00` is prayer 2, and `20:00` is prayer 16. These reminders are fixed to clock time, so `/shift day 10:00` does not move them.
+The default schedule has Saint John Chrysostom prayer reminders every hour from `05:00` through `20:00`: `05:00` is prayer 1, `06:00` is prayer 2, and `20:00` is prayer 16. These reminders are fixed to clock time, so `/sd 10:00` does not move them.
 
 ## Run
 
@@ -131,7 +131,7 @@ This writes a local one-day override to `data/day_overrides/`. Override files ar
 - `/snooze 10` - delay last or next reminder by 10 minutes.
 - `/recalc food 4` - recalculate today's remaining food reminders with a 10-minute eating window and a 2:15 gap after eating.
 - `2 mi done`, `2 pp done`, `2 пп done`, or `/mi 2 done` - mark meal 2 as completed now and recalculate today's remaining meal reminders.
-- `/shift day 10:00` - rebuild today's start-relative reminders from 10:00; tomorrow keeps the base flow.
+- `/sd 10:00` or `sd 10:00` - rebuild today's start-relative reminders from 10:00; tomorrow keeps the base flow.
 - `/отбой` or `отбой` - delete tracked bot-chat messages and leave one bedtime confirmation.
 - `/desktop on`, `/desktop off`, `/desktop status` - control center-screen MsgBox reminders.
 - `/inbox text` - append a small task to `data/inbox.md`.

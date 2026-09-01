@@ -16,7 +16,7 @@ Prayer texts are taken from the Orthodox prayer list commonly titled "Молит
 - Use compact titles: `Молитва Иоанна Златоуста N/16`.
 - Put the prayer text into the event message so Telegram, desktop, and watch notifications can display it.
 - Keep existing work, learning, food, and sleep reminders unchanged.
-- `/shift day` does not shift these prayers; they remain tied to the hour.
+- `/sd` does not shift these prayers; they remain tied to the hour.
 
 ## Testing
 

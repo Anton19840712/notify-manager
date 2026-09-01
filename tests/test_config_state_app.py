@@ -271,7 +271,7 @@ class ConfigStateAppTests(unittest.TestCase):
             calls = []
             app.telegram = RecordingTelegram(
                 calls,
-                commands=[TelegramCommand(update_id=10, text="/shift day 10:00")],
+                commands=[TelegramCommand(update_id=10, text="/sd 10:00")],
             )
 
             app.process_telegram_commands()
