@@ -328,27 +328,24 @@ class ScheduleTests(unittest.TestCase):
         events = schedule.events_for_date(date(2026, 8, 30))
 
         self.assertEqual(
-            [(event.event_id, event.title, event.when.strftime("%H:%M")) for event in events[:15]],
+            [(event.event_id, event.title, event.when.strftime("%H:%M")) for event in events[:12]],
             [
                 ("wake-up", "Подъем", "04:00"),
                 ("morning-block", "Утренний блок: МП + кардио", "04:01"),
                 ("morning-cardio-tail", "Кардио: закрепление состояния", "04:08"),
                 ("spirit-reset", "Дух: добродетели + антируминация", "04:21"),
                 ("day-optimization", "Оптимизация дня", "04:40"),
-                ("chrysostom-prayer-01", "Молитва Иоанна Златоуста 1/16", "05:00"),
                 ("target-engineering-article", "Целевая инженерная статья", "05:00"),
-                ("chrysostom-prayer-02", "Молитва Иоанна Златоуста 2/16", "06:00"),
                 ("microservices-reading", "Микросервисы", "06:00"),
-                ("chrysostom-prayer-03", "Молитва Иоанна Златоуста 3/16", "07:00"),
                 ("water-1", "1 пв", "07:00"),
                 ("pre-meal-1", "10 минут до 1 пп", "07:05"),
                 ("meal-1", "1 пп", "07:15"),
                 ("monitoring-reading", "Мониторинг", "07:25"),
-                ("chrysostom-prayer-04", "Молитва Иоанна Златоуста 4/16", "08:00"),
+                ("morning-buffer", "Буфер / быт / подготовка к работе", "08:25"),
             ],
         )
 
-    def test_default_schedule_contains_hourly_chrysostom_prayers(self):
+    def test_default_schedule_omits_hourly_chrysostom_prayers(self):
         schedule = Schedule.from_dict(
             json.loads((ROOT / "config" / "schedule.json").read_text(encoding="utf-8"))
         )
@@ -356,13 +353,7 @@ class ScheduleTests(unittest.TestCase):
         events = schedule.events_for_date(date(2026, 8, 30))
         prayers = [event for event in events if event.event_id.startswith("chrysostom-prayer-")]
 
-        self.assertEqual(len(prayers), 16)
-        self.assertEqual([event.event_id for event in prayers], [f"chrysostom-prayer-{index:02d}" for index in range(1, 17)])
-        self.assertEqual([event.when.strftime("%H:%M") for event in prayers], [f"{hour:02d}:00" for hour in range(5, 21)])
-        self.assertEqual(prayers[0].title, "Молитва Иоанна Златоуста 1/16")
-        self.assertEqual(prayers[-1].title, "Молитва Иоанна Златоуста 16/16")
-        self.assertIn("не лиши мене небесных Твоих благ", prayers[0].message)
-        self.assertIn("даждь ми мысль благу", prayers[-1].message)
+        self.assertEqual(prayers, [])
 
     def test_default_schedule_contains_batch_cooking_every_third_day(self):
         schedule = Schedule.from_dict(
