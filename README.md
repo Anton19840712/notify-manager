@@ -17,6 +17,16 @@ The wake-up event first opens `data/audio/rota-podem.mp3`, waits 2 seconds, then
 
 The bedtime event opens `data/audio/otboj.mp3` before sending the `Отбой` Telegram and desktop reminders.
 
+Meal events open numbered assistant voice cues before Telegram and desktop reminders:
+
+- `data/audio/meal-1.mp3` - first meal.
+- `data/audio/meal-2.mp3` - second meal.
+- `data/audio/meal-3.mp3` - third meal.
+- `data/audio/meal-4.mp3` - fourth meal.
+- `data/audio/meal-5.mp3` - extra recalculated meal when needed.
+
+If `meal-N.mp3` is missing, the notifier falls back to `meal-N.wav`. If neither file exists, it logs a warning and continues the regular reminder.
+
 ## Optional Blocks
 
 Optional practice blocks are stored in `config/schedule.json` under `blocks`. Events, rotations, and relative cycles with a `block` field stay in the schedule file, but they are delivered only when that block is enabled.

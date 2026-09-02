@@ -110,6 +110,86 @@ class AudioCuePlayerTests(unittest.TestCase):
         self.assertFalse(played)
         self.assertEqual(calls, [])
 
+    def test_meal_event_opens_numbered_meal_audio(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            meal_path = root / "data" / "audio" / "meal-2.mp3"
+            meal_path.parent.mkdir(parents=True)
+            meal_path.write_bytes(b"meal")
+            calls = []
+            player = AudioCuePlayer(root=root, opener=lambda path: calls.append(("open", path)))
+            event = ScheduleEvent(
+                event_id="meal-2",
+                title="2 пп",
+                message="2 прием пищи",
+                when=datetime(2026, 9, 2, 9, 40),
+            )
+
+            played = player.play_for_event(event)
+
+        self.assertTrue(played)
+        self.assertEqual(calls, [("open", meal_path)])
+
+    def test_override_meal_event_opens_numbered_meal_audio(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            meal_path = root / "data" / "audio" / "meal-3.mp3"
+            meal_path.parent.mkdir(parents=True)
+            meal_path.write_bytes(b"meal")
+            calls = []
+            player = AudioCuePlayer(root=root, opener=lambda path: calls.append(("open", path)))
+            event = ScheduleEvent(
+                event_id="override-meal-3",
+                title="3 пп",
+                message="Пересчитанный прием пищи.",
+                when=datetime(2026, 9, 2, 14, 40),
+            )
+
+            played = player.play_for_event(event)
+
+        self.assertTrue(played)
+        self.assertEqual(calls, [("open", meal_path)])
+
+    def test_meal_event_uses_wav_when_mp3_is_missing(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            meal_path = root / "data" / "audio" / "meal-4.wav"
+            meal_path.parent.mkdir(parents=True)
+            meal_path.write_bytes(b"meal")
+            calls = []
+            player = AudioCuePlayer(root=root, opener=lambda path: calls.append(("open", path)))
+            event = ScheduleEvent(
+                event_id="meal-4",
+                title="4 пп",
+                message="4 прием пищи",
+                when=datetime(2026, 9, 2, 14, 30),
+            )
+
+            played = player.play_for_event(event)
+
+        self.assertTrue(played)
+        self.assertEqual(calls, [("open", meal_path)])
+
+    def test_pre_meal_reminder_does_not_open_meal_audio(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            meal_path = root / "data" / "audio" / "meal-2.mp3"
+            meal_path.parent.mkdir(parents=True)
+            meal_path.write_bytes(b"meal")
+            calls = []
+            player = AudioCuePlayer(root=root, opener=lambda path: calls.append(("open", path)))
+            event = ScheduleEvent(
+                event_id="pre-meal-2",
+                title="10 минут до 2 пп",
+                message="Подготовка к еде.",
+                when=datetime(2026, 9, 2, 9, 30),
+            )
+
+            played = player.play_for_event(event)
+
+        self.assertFalse(played)
+        self.assertEqual(calls, [])
+
     def test_bedtime_event_opens_bedtime_audio(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
