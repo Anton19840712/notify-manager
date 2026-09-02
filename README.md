@@ -17,6 +17,20 @@ The wake-up event first opens `data/audio/rota-podem.mp3`, waits 2 seconds, then
 
 The bedtime event opens `data/audio/otboj.mp3` before sending the `Отбой` Telegram and desktop reminders.
 
+## Optional Blocks
+
+Optional practice blocks are stored in `config/schedule.json` under `blocks`. Events with a `block` field stay in the schedule file, but they are delivered only when that block has `"enabled": true`.
+
+The Saint John Chrysostom hourly prayer block is stored as `chrysostom-prayers` and disabled by default:
+
+```json
+"chrysostom-prayers": {
+  "enabled": false
+}
+```
+
+Set it to `true` and restart the notifier to reconnect the hourly reminders from `05:00` through `20:00`.
+
 ## Run
 
 From PowerShell:
@@ -152,6 +166,7 @@ Telegram cleanup can only delete messages whose `message_id` was tracked after t
 
 The default schedule uses a 145-minute water/food cycle:
 
+- Saint John Chrysostom prayers are kept as the optional `chrysostom-prayers` block and are disabled by default.
 - Work daily is fixed at `11:00`.
 - Strength runs at `11:15` as a 7-day rotation: every day keeps thighs and calves, then adds one base movement.
 - The strength base movement rotation starts on `2026-09-01`: pull-ups, bench press, row, dips, overhead/Viking press, trap-bar/RDL, core/posture.

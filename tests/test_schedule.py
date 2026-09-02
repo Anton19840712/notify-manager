@@ -11,6 +11,58 @@ from day_notifier.schedule import Schedule
 
 
 class ScheduleTests(unittest.TestCase):
+    def test_disabled_event_block_keeps_events_out_of_day(self):
+        schedule = Schedule.from_dict(
+            {
+                "blocks": {
+                    "optional-prayers": {
+                        "enabled": False,
+                    }
+                },
+                "events": [
+                    {"id": "wake", "time": "04:00", "title": "Подъем", "message": "Подъем"},
+                    {
+                        "id": "optional-prayer-1",
+                        "block": "optional-prayers",
+                        "time": "05:00",
+                        "title": "Опциональная молитва",
+                        "message": "Текст молитвы",
+                    },
+                ],
+                "cycles": [],
+            },
+        )
+
+        events = schedule.events_for_date(date(2026, 8, 30))
+
+        self.assertEqual([event.event_id for event in events], ["wake"])
+
+    def test_enabled_event_block_restores_events_to_day(self):
+        schedule = Schedule.from_dict(
+            {
+                "blocks": {
+                    "optional-prayers": {
+                        "enabled": True,
+                    }
+                },
+                "events": [
+                    {"id": "wake", "time": "04:00", "title": "Подъем", "message": "Подъем"},
+                    {
+                        "id": "optional-prayer-1",
+                        "block": "optional-prayers",
+                        "time": "05:00",
+                        "title": "Опциональная молитва",
+                        "message": "Текст молитвы",
+                    },
+                ],
+                "cycles": [],
+            },
+        )
+
+        events = schedule.events_for_date(date(2026, 8, 30))
+
+        self.assertEqual([event.event_id for event in events], ["wake", "optional-prayer-1"])
+
     def test_day_override_can_suppress_fixed_events_for_one_day(self):
         schedule = Schedule.from_dict(
             {
@@ -345,15 +397,31 @@ class ScheduleTests(unittest.TestCase):
             ],
         )
 
-    def test_default_schedule_omits_hourly_chrysostom_prayers(self):
-        schedule = Schedule.from_dict(
-            json.loads((ROOT / "config" / "schedule.json").read_text(encoding="utf-8"))
-        )
+    def test_default_schedule_keeps_chrysostom_prayers_as_disabled_block(self):
+        data = json.loads((ROOT / "config" / "schedule.json").read_text(encoding="utf-8"))
+        schedule = Schedule.from_dict(data)
+
+        events = schedule.events_for_date(date(2026, 8, 30))
+        prayers = [event for event in events if event.event_id.startswith("chrysostom-prayer-")]
+        configured_prayers = [event for event in data["events"] if event.get("block") == "chrysostom-prayers"]
+
+        self.assertFalse(data["blocks"]["chrysostom-prayers"]["enabled"])
+        self.assertEqual(len(configured_prayers), 16)
+        self.assertEqual(prayers, [])
+
+    def test_chrysostom_prayer_block_can_be_enabled_from_config(self):
+        data = json.loads((ROOT / "config" / "schedule.json").read_text(encoding="utf-8"))
+        data["blocks"]["chrysostom-prayers"]["enabled"] = True
+        schedule = Schedule.from_dict(data)
 
         events = schedule.events_for_date(date(2026, 8, 30))
         prayers = [event for event in events if event.event_id.startswith("chrysostom-prayer-")]
 
-        self.assertEqual(prayers, [])
+        self.assertEqual(len(prayers), 16)
+        self.assertEqual([event.event_id for event in prayers], [f"chrysostom-prayer-{index:02d}" for index in range(1, 17)])
+        self.assertEqual([event.when.strftime("%H:%M") for event in prayers], [f"{hour:02d}:00" for hour in range(5, 21)])
+        self.assertEqual(prayers[0].title, "Молитва Иоанна Златоуста 1/16")
+        self.assertEqual(prayers[-1].title, "Молитва Иоанна Златоуста 16/16")
 
     def test_default_schedule_contains_batch_cooking_every_third_day(self):
         schedule = Schedule.from_dict(

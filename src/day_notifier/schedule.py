@@ -27,12 +27,14 @@ class ScheduleEvent:
 class Schedule:
     def __init__(
         self,
+        blocks: dict[str, Any] | None = None,
         events: list[dict[str, Any]] | None = None,
         cycles: list[dict[str, Any]] | None = None,
         relative_cycles: list[dict[str, Any]] | None = None,
         rotating_events: list[dict[str, Any]] | None = None,
         day_overrides: dict[str, dict[str, Any]] | None = None,
     ) -> None:
+        self._blocks = blocks or {}
         self._events = events or []
         self._cycles = cycles or []
         self._relative_cycles = relative_cycles or []
@@ -46,6 +48,7 @@ class Schedule:
         day_overrides: dict[str, dict[str, Any]] | None = None,
     ) -> "Schedule":
         return cls(
+            blocks=dict(data.get("blocks", {})),
             events=list(data.get("events", [])),
             cycles=list(data.get("cycles", [])),
             relative_cycles=list(data.get("relative_cycles", [])),
@@ -61,7 +64,7 @@ class Schedule:
 
         for event in self._events:
             event_id = str(event["id"])
-            if event_id in suppressed_events:
+            if event_id in suppressed_events or not _is_enabled_by_block(event, self._blocks):
                 continue
             expanded.append(
                 ScheduleEvent(
@@ -252,6 +255,19 @@ def load_day_overrides(override_dir: Path) -> dict[str, dict[str, Any]]:
 def _parse_time(value: str) -> time:
     hour, minute = value.split(":", 1)
     return time(hour=int(hour), minute=int(minute))
+
+
+def _is_enabled_by_block(item: dict[str, Any], blocks: dict[str, Any]) -> bool:
+    block_id = str(item.get("block", "")).strip()
+    if not block_id:
+        return True
+
+    block = blocks.get(block_id, {})
+    if isinstance(block, bool):
+        return block
+    if isinstance(block, dict):
+        return bool(block.get("enabled", True))
+    return True
 
 
 def _is_cycle_day(day: date, cycle: dict[str, Any]) -> bool:
