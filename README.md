@@ -34,7 +34,7 @@ If the selected profile file is missing, the notifier falls back to the legacy r
 Optional practice blocks are stored in `config/schedule.json` under `blocks`. Events, rotations, and relative cycles with a `block` field stay in the schedule file, but they are delivered only when that block is enabled.
 
 - `self-development` - engineering article, microservices, monitoring, and day optimization.
-- `training` - strength rotation: thighs, calves, plus one base movement.
+- `training` - one-hour full-body circuit rotation plus assault bike or regular bike tail.
 - `prayers` - morning prayer and spiritual reset block.
 - `chrysostom-prayers` - 16 hourly Saint John Chrysostom prayers from `05:00` to `20:00`, disabled by default.
 
@@ -193,8 +193,9 @@ The default schedule uses a 145-minute water/food cycle:
 - Self-development, strength training, and the morning prayer/spirit layer are toggleable blocks enabled by default.
 - Saint John Chrysostom prayers are kept as the optional `chrysostom-prayers` block and are disabled by default.
 - Work daily is fixed at `11:00`.
-- Strength runs at `11:15` as a 7-day rotation: every day keeps thighs and calves, then adds one base movement.
-- The strength base movement rotation starts on `2026-09-01`: pull-ups, bench press, row, dips, overhead/Viking press, trap-bar/RDL, core/posture.
+- Training runs at `11:15` as a 4-day full-body circuit rotation: A back squat + standing press, B bench press + trap bar, A front squat + standing press, B incline press + trap bar.
+- Each training reminder is a one-hour block: 5-minute warm-up, 45 minutes of up to 10 rounds of 10 exercises, remaining time on assault bike or regular bike, then shower.
+- The circuit keeps the rack at one height per session. Template A uses squat/standing-press height; Template B uses bench or incline height and covers legs with trap-bar/deadlift work.
 - Lunch recovery sleep normally runs from `12:15` to `13:15`; when recalculated meals overlap it, the nap shifts after the conflicting food window.
 - `1 пв` at `07:00`, `1 пп` at `07:15`.
 - `2 пв` at `09:25`, `2 пп` at `09:40`.

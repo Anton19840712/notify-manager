@@ -746,7 +746,7 @@ class ScheduleTests(unittest.TestCase):
 
         self.assertIn("work-daily", event_ids)
         self.assertIn("meal-3", event_ids)
-        self.assertNotIn("strength-pullups", event_ids)
+        self.assertNotIn("full-body-circuit-back-squat", event_ids)
 
     def test_default_schedule_can_disable_prayers_without_dropping_wake_food_or_sleep(self):
         data = json.loads((ROOT / "config" / "schedule.json").read_text(encoding="utf-8"))
@@ -768,13 +768,16 @@ class ScheduleTests(unittest.TestCase):
 
         first_day = schedule.events_for_date(date(2026, 9, 1))
         second_day = schedule.events_for_date(date(2026, 9, 2))
+        third_day = schedule.events_for_date(date(2026, 9, 3))
+        fourth_day = schedule.events_for_date(date(2026, 9, 4))
+        repeated_first_day = schedule.events_for_date(date(2026, 9, 5))
 
         self.assertIn(
             ("work-daily", "Дейли по работе", "11:00"),
             [(event.event_id, event.title, event.when.strftime("%H:%M")) for event in first_day],
         )
         self.assertIn(
-            ("strength-pullups", "Силовой блок: бедра + голень + подтягивания", "11:15"),
+            ("full-body-circuit-back-squat", "Круговая A: присед на спине + жим стоя", "11:15"),
             [(event.event_id, event.title, event.when.strftime("%H:%M")) for event in first_day],
         )
         self.assertIn(
@@ -786,9 +789,26 @@ class ScheduleTests(unittest.TestCase):
             [(event.event_id, event.title, event.when.strftime("%H:%M")) for event in first_day],
         )
         self.assertIn(
-            ("strength-bench-press", "Силовой блок: бедра + голень + жим лежа", "11:15"),
+            ("full-body-circuit-bench", "Круговая B: жим лежа + треп-гриф", "11:15"),
             [(event.event_id, event.title, event.when.strftime("%H:%M")) for event in second_day],
         )
+        self.assertIn(
+            ("full-body-circuit-front-squat", "Круговая A: фронтальный присед + жим стоя", "11:15"),
+            [(event.event_id, event.title, event.when.strftime("%H:%M")) for event in third_day],
+        )
+        self.assertIn(
+            ("full-body-circuit-incline", "Круговая B: жим наклонный + треп-гриф", "11:15"),
+            [(event.event_id, event.title, event.when.strftime("%H:%M")) for event in fourth_day],
+        )
+        self.assertIn(
+            ("full-body-circuit-back-squat", "Круговая A: присед на спине + жим стоя", "11:15"),
+            [(event.event_id, event.title, event.when.strftime("%H:%M")) for event in repeated_first_day],
+        )
+        first_training = next(event for event in first_day if event.event_id == "full-body-circuit-back-squat")
+        self.assertIn("Тяга штанги к поясу в наклоне", first_training.message)
+        self.assertIn("assault bike", first_training.message)
+        self.assertIn("обычный bike", first_training.message)
+        self.assertIn("душ", first_training.message)
 
     def test_expands_water_and_food_cycle(self):
         schedule = Schedule.from_dict(
