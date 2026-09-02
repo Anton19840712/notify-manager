@@ -132,6 +132,16 @@ class CommandTests(unittest.TestCase):
         self.assertIn("1 пв", result.reply)
         self.assertIn("переслать видео", result.reply)
 
+    def test_summary_includes_due_processes_when_available(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+            context.processes_today = lambda: "Процессы на сегодня:\n- Внешний выход: магазин."
+
+            result = handle_command("/summary", context)
+
+        self.assertIn("Процессы на сегодня", result.reply)
+        self.assertIn("Внешний выход", result.reply)
+
     def test_today_command_returns_remaining_today_events(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             context = self.make_context(Path(temp_dir) / "inbox.md")
@@ -141,6 +151,25 @@ class CommandTests(unittest.TestCase):
         self.assertIn("Сегодня", result.reply)
         self.assertIn("07:00", result.reply)
         self.assertIn("1 пв", result.reply)
+
+    def test_processes_command_returns_due_processes(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+            context.processes_today = lambda: "Процессы на сегодня:\n- Внешний выход: магазин."
+
+            result = handle_command("/processes", context)
+
+        self.assertIn("Процессы на сегодня", result.reply)
+        self.assertIn("магазин", result.reply)
+
+    def test_processes_command_handles_empty_backlog(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+            context.processes_today = lambda: ""
+
+            result = handle_command("/processes", context)
+
+        self.assertEqual(result.reply, "На сегодня внеплановых процессов нет.")
 
     def test_today_command_hides_pre_meal_reminders(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -525,6 +554,7 @@ class CommandTests(unittest.TestCase):
         self.assertIn("/sd - перенести старт дня", result.reply)
         self.assertIn("/block_on - подключить блок", result.reply)
         self.assertIn("/training_off - выключить тренировки", result.reply)
+        self.assertIn("/processes - процессы на сегодня", result.reply)
 
 
 if __name__ == "__main__":

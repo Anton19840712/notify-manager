@@ -4,8 +4,10 @@ import argparse
 import json
 import logging
 import time
+import zipfile
 from datetime import datetime
 from pathlib import Path
+from xml.etree import ElementTree
 
 from day_notifier.audio import AudioCuePlayer
 from day_notifier.blocks import (
@@ -24,6 +26,7 @@ from day_notifier.overrides import (
     write_min_interval_food_override,
     write_shifted_day_override,
 )
+from day_notifier.process_backlog import format_processes_today, read_process_items
 from day_notifier.schedule import Schedule, ScheduleEvent, load_schedule
 from day_notifier.state import JsonStateStore
 from day_notifier.telegram_client import TelegramClient
@@ -59,6 +62,7 @@ class NotifierApp:
         self.settings = load_settings(self.settings_path)
         self.state = JsonStateStore(root / "data" / "state.json")
         self.inbox_path = root / "data" / "inbox.md"
+        self.process_backlog_path = self._find_process_backlog_path()
         self.desktop = DesktopNotifier(enabled=self.settings.desktop_enabled)
         self.audio = AudioCuePlayer(root, morning_prayer_enabled=self.is_morning_prayer_enabled)
         self.telegram = _make_telegram_client(self.settings)
@@ -132,6 +136,7 @@ class NotifierApp:
             schedule_path=self.schedule_path,
             cleanup_telegram_chat=self.cleanup_telegram_chat,
             request_shutdown=self.request_shutdown,
+            processes_today=self.processes_today,
         )
         for command in commands:
             try:
@@ -149,13 +154,14 @@ class NotifierApp:
             format_event_line(event, current, include_date=True)
             for event in self.schedule.upcoming(current, 10, include_pre_meal=False)
         )
-        return "\n".join(lines)
+        return self._append_processes_section("\n".join(lines), current)
 
     def today(self, now: datetime | None = None) -> str:
-        return format_startup_summary(self.schedule, now or datetime.now())
+        current = now or datetime.now()
+        return self._append_processes_section(format_startup_summary(self.schedule, current), current)
 
     def send_startup_summary(self) -> None:
-        text = format_startup_summary(self.schedule, datetime.now())
+        text = self.today(datetime.now())
         if self.telegram is not None:
             try:
                 self.send_telegram_message(text)
@@ -187,6 +193,15 @@ class NotifierApp:
         if not synced:
             return "Не смог синхронизировать Telegram-меню: Telegram не подтвердил обновление."
         return format_bot_command_sync_result()
+
+    def processes_today(self, now: datetime | None = None) -> str:
+        current = now or datetime.now()
+        try:
+            items = read_process_items(self.process_backlog_path)
+        except (OSError, ValueError, zipfile.BadZipFile, ElementTree.ParseError) as exc:
+            logging.warning("Could not read process backlog: %s", exc)
+            return f"Не смог прочитать process-backlog: {exc}"
+        return format_processes_today(items, current.date())
 
     def test_desktop_notification(self) -> None:
         self.desktop.show("notify-manager", "Тест desktop MsgBox: центральное окно работает.", blocking=True)
@@ -278,6 +293,17 @@ class NotifierApp:
     def reload_schedule(self) -> None:
         self.schedule = load_schedule(self.schedule_path, self.override_dir, self.block_state_path)
 
+    def _find_process_backlog_path(self) -> Path:
+        xlsx_path = self.root / "data" / "process-backlog.xlsx"
+        csv_path = self.root / "data" / "process-backlog.csv"
+        return xlsx_path if xlsx_path.exists() or not csv_path.exists() else csv_path
+
+    def _append_processes_section(self, text: str, now: datetime) -> str:
+        processes = self.processes_today(now)
+        if not processes:
+            return text
+        return f"{text}\n\n{processes}"
+
 
 def format_startup_summary(schedule: Schedule, now: datetime, limit: int = 10) -> str:
     events = schedule.remaining_today(now, limit=limit, include_pre_meal=False)
@@ -294,6 +320,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--once", action="store_true", help="Run one polling cycle and exit")
     parser.add_argument("--summary", action="store_true", help="Print upcoming events and exit")
     parser.add_argument("--today", action="store_true", help="Print remaining events for today and exit")
+    parser.add_argument("--processes", action="store_true", help="Print due process backlog items and exit")
     parser.add_argument("--test-telegram", action="store_true", help="Send a test desktop and Telegram notification")
     parser.add_argument("--sync-bot-commands", action="store_true", help="Sync Telegram bot command menu")
     parser.add_argument("--test-desktop", action="store_true", help="Show a blocking desktop message box")
@@ -317,6 +344,9 @@ def main() -> int:
         return 0
     if args.today:
         print(app.today())
+        return 0
+    if args.processes:
+        print(app.processes_today() or "На сегодня внеплановых процессов нет.")
         return 0
     if args.test_telegram:
         app.send_test_notification()

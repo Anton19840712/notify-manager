@@ -7,6 +7,7 @@ param(
     [switch]$Once,
     [switch]$Summary,
     [switch]$Today,
+    [switch]$Processes,
     [switch]$TestTelegram,
     [switch]$SyncBotCommands,
     [switch]$TestDesktop,
@@ -110,6 +111,10 @@ if ($Summary) {
 }
 if ($Today) {
     Invoke-NotifierForeground @("--today")
+    exit $LASTEXITCODE
+}
+if ($Processes) {
+    Invoke-NotifierForeground @("--processes")
     exit $LASTEXITCODE
 }
 if ($TestTelegram) {

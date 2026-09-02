@@ -39,6 +39,7 @@ class BotCommandRegistryTests(unittest.TestCase):
         self.assertIn({"command": "prayers_off", "description": "выключить молитвы"}, payload)
         self.assertIn({"command": "chrysostom_on", "description": "включить молитвы Златоуста"}, payload)
         self.assertIn({"command": "chrysostom_off", "description": "выключить молитвы Златоуста"}, payload)
+        self.assertIn({"command": "processes", "description": "процессы на сегодня"}, payload)
 
     def test_help_text_is_generated_from_same_registry(self):
         help_text = format_bot_commands_help()
@@ -51,6 +52,7 @@ class BotCommandRegistryTests(unittest.TestCase):
         self.assertIn("/selfdev_off - выключить саморазвитие", help_text)
         self.assertIn("/training_off - выключить тренировки", help_text)
         self.assertIn("/prayers_off - выключить молитвы", help_text)
+        self.assertIn("/processes - процессы на сегодня", help_text)
 
 
 if __name__ == "__main__":

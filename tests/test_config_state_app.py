@@ -263,6 +263,57 @@ class ConfigStateAppTests(unittest.TestCase):
         self.assertNotIn("12:15 Досып", text)
         self.assertNotIn("10 минут до", text)
 
+    def test_app_today_appends_due_processes_from_backlog(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_project_files(root)
+            (root / "data" / "process-backlog.csv").write_text(
+                "\n".join(
+                    [
+                        "Название,Класс,Статус,Важность,Срочность,Дата/дедлайн,Повторяемость,Длительность,Место,Можно батчить с,Жесткий якорь?,Комментарий",
+                        "Сходить в магазин за кока-колой,errand,today,low,today,2026-08-30,,15,магазин,,no,",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            app = NotifierApp(root)
+
+            text = app.today(datetime(2026, 8, 30, 6, 30))
+
+        self.assertIn("Сегодня осталось", text)
+        self.assertIn("Процессы на сегодня", text)
+        self.assertIn("Сходить в магазин за кока-колой", text)
+
+    def test_processes_today_uses_empty_message_when_backlog_has_no_due_items(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_project_files(root)
+            (root / "data" / "process-backlog.csv").write_text(
+                "\n".join(
+                    [
+                        "Название,Класс,Статус,Важность,Срочность,Дата/дедлайн,Повторяемость,Длительность,Место,Можно батчить с,Жесткий якорь?,Комментарий",
+                        "Сдать кровь на гормоны,health,scheduled,high,date_bound,2026-09-20,every_21_days,60,лаборатория,,yes,",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            app = NotifierApp(root)
+
+            text = app.processes_today(datetime(2026, 8, 30, 6, 30))
+
+        self.assertEqual(text, "")
+
+    def test_processes_today_reports_unreadable_backlog_without_crashing(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_project_files(root)
+            (root / "data" / "process-backlog.xlsx").write_text("not an xlsx", encoding="utf-8")
+            app = NotifierApp(root)
+
+            text = app.processes_today(datetime(2026, 8, 30, 6, 30))
+
+        self.assertIn("Не смог прочитать process-backlog", text)
+
     def test_test_notification_sends_telegram_before_blocking_desktop_box(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             calls = []
@@ -427,6 +478,31 @@ class ConfigStateAppTests(unittest.TestCase):
         self.assertIn("Блок включен", calls[-1][1])
         self.assertIn("chrysostom-prayers", calls[-1][1])
         self.assertIn("chrysostom-prayer-01", [event.event_id for event in events])
+
+    def test_process_telegram_processes_command_reads_process_backlog(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_project_files(root)
+            (root / "data" / "process-backlog.csv").write_text(
+                "\n".join(
+                    [
+                        "Название,Класс,Статус,Важность,Срочность,Дата/дедлайн,Повторяемость,Длительность,Место,Можно батчить с,Жесткий якорь?,Комментарий",
+                        "Сходить в магазин за кока-колой,errand,today,low,today,2026-08-30,,15,магазин,,no,",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            app = NotifierApp(root)
+            calls = []
+            app.telegram = RecordingTelegram(
+                calls,
+                commands=[TelegramCommand(update_id=10, text="/processes")],
+            )
+
+            app.process_telegram_commands()
+
+        self.assertIn("Процессы на сегодня", calls[-1][1])
+        self.assertIn("Сходить в магазин за кока-колой", calls[-1][1])
 
     def test_block_status_reports_effective_block_state(self):
         with tempfile.TemporaryDirectory() as temp_dir:

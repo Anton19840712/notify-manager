@@ -18,6 +18,7 @@ BOT_COMMANDS: tuple[BotCommandDefinition, ...] = (
     BotCommandDefinition("help", "список команд"),
     BotCommandDefinition("summary", "ближайшие события и inbox"),
     BotCommandDefinition("today", "события на сегодня"),
+    BotCommandDefinition("processes", "процессы на сегодня"),
     BotCommandDefinition("next", "следующее событие"),
     BotCommandDefinition("done", "отметить последнее событие"),
     BotCommandDefinition("snooze", "отложить на 10 минут"),
@@ -68,6 +69,7 @@ def format_bot_commands_help(commands: Iterable[BotCommandDefinition] = BOT_COMM
     lines.append("Молитвы: /prayers_on, /prayers_off, /chrysostom_on, /chrysostom_off.")
     lines.append("Id для /block_on: self-development, training, prayers, chrysostom-prayers.")
     lines.append("Прием пищи: /mi1, /mi2, /mi3, /mi4 или /2 mi done.")
+    lines.append("Процессы: /processes читает data/process-backlog.xlsx или .csv.")
     return "\n".join(lines)
 
 

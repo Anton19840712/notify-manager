@@ -63,6 +63,7 @@ The AutoHotkey script starts the notifier and adds tray menu actions:
 - `Status`
 - `Today`
 - `Summary`
+- `Processes`
 - `Test Telegram`
 - `Sync Bot Commands`
 - `Test Desktop MsgBox`
@@ -98,6 +99,12 @@ Print the remaining reminders for today:
 
 ```powershell
 .\scripts\start-notifier.ps1 -Today
+```
+
+Print today's process backlog:
+
+```powershell
+.\scripts\start-notifier.ps1 -Processes
 ```
 
 Send a test Telegram and desktop notification:
@@ -145,6 +152,7 @@ This writes a local one-day override to `data/day_overrides/`. Override files ar
 - `/help` - generated command list.
 - `/summary` - upcoming reminders and inbox.
 - `/today` - remaining reminders for today.
+- `/processes` - due items from `data/process-backlog.xlsx` or `data/process-backlog.csv`.
 - `/next` - next reminder.
 - `/done` - mark last delivered reminder as done.
 - `/snooze 10` - delay last or next reminder by 10 minutes.
@@ -183,3 +191,18 @@ The default schedule uses a 145-minute water/food cycle:
 - Batch-cooking is one long block: cook 12 prepared meals, put them into containers, clean the kitchen surfaces, and close the kitchen.
 
 The living practice list is kept in `data/day-practices.md`.
+
+## Process Backlog
+
+Irregular and episodic processes live in `data/process-backlog.xlsx`. If that file is absent, the notifier falls back to `data/process-backlog.csv`.
+
+The workbook is intentionally simple:
+
+- `Название` - what needs to be done.
+- `Класс` - for example `errand`, `health`, `documents`, `work`, or `learning`.
+- `Статус` - use `today` for today's action, `scheduled` for dated items, `backlog` for parking lot items, and `done` when closed.
+- `Важность` and `Срочность` - used for compact grouping, especially `critical` and `hard_deadline`.
+- `Дата/дедлайн` - when a scheduled process becomes due.
+- `Длительность`, `Место`, and `Можно батчить с` - help group external errands into one outside trip.
+
+`/processes`, `/summary`, `/today`, and the startup summary show only due/today items. The base schedule stays unchanged; this backlog is an operational layer for stores, Wildberries, repair pickups, hormone blood tests, VNZH document deadlines, and similar non-daily work.

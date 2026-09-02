@@ -81,6 +81,7 @@ class CommandContext:
     schedule_path: Path | None = None
     cleanup_telegram_chat: Callable[[], str] | None = None
     request_shutdown: Callable[[], None] | None = None
+    processes_today: Callable[[], str] | None = None
 
 
 @dataclass(frozen=True)
@@ -130,6 +131,9 @@ def handle_command(text: str, context: CommandContext) -> CommandResult:
 
     if command == "/today":
         return CommandResult(reply=_today(context))
+
+    if command in {"/processes", "processes"}:
+        return CommandResult(reply=_processes(context))
 
     if command == "/desktop":
         return CommandResult(reply=_desktop(argument, context))
@@ -195,6 +199,11 @@ def _summary(context: CommandContext) -> str:
         lines.append("Inbox:")
         lines.extend(inbox_items)
 
+    processes = _processes_or_empty(context)
+    if processes:
+        lines.append("")
+        lines.append(processes)
+
     return "\n".join(lines)
 
 
@@ -202,10 +211,26 @@ def _today(context: CommandContext) -> str:
     current = context.now()
     events = context.schedule.remaining_today(current, limit=10, include_pre_meal=False)
     if not events:
-        return "Сегодня больше нет событий."
+        processes = _processes_or_empty(context)
+        return processes or "Сегодня больше нет событий."
     lines = ["Сегодня:"]
     lines.extend(format_event_line(event, current) for event in events)
+    processes = _processes_or_empty(context)
+    if processes:
+        lines.append("")
+        lines.append(processes)
     return "\n".join(lines)
+
+
+def _processes(context: CommandContext) -> str:
+    processes = _processes_or_empty(context)
+    return processes or "На сегодня внеплановых процессов нет."
+
+
+def _processes_or_empty(context: CommandContext) -> str:
+    if context.processes_today is None:
+        return ""
+    return context.processes_today().strip()
 
 
 def _desktop(argument: str, context: CommandContext) -> str:
