@@ -8,6 +8,11 @@ from datetime import datetime
 from pathlib import Path
 
 from day_notifier.audio import AudioCuePlayer
+from day_notifier.blocks import (
+    block_status as format_block_status,
+    format_block_toggle_result,
+    set_block_enabled as write_block_enabled,
+)
 from day_notifier.bot_commands import bot_command_payload, format_bot_command_sync_result
 from day_notifier.commands import CommandContext, handle_command
 from day_notifier.config import Settings, load_settings, set_desktop_enabled
@@ -47,7 +52,8 @@ class NotifierApp:
         self.root = root
         self.schedule_path = root / "config" / "schedule.json"
         self.override_dir = root / "data" / "day_overrides"
-        self.schedule = load_schedule(self.schedule_path, self.override_dir)
+        self.block_state_path = root / "data" / "block_state.json"
+        self.schedule = load_schedule(self.schedule_path, self.override_dir, self.block_state_path)
         self.settings_path = root / "config" / "settings.json"
         self.settings = load_settings(self.settings_path)
         self.state = JsonStateStore(root / "data" / "state.json")
@@ -118,6 +124,8 @@ class NotifierApp:
             now=datetime.now,
             set_desktop_enabled=self.set_desktop_enabled,
             is_desktop_enabled=self.is_desktop_enabled,
+            set_block_enabled=self.set_block_enabled,
+            block_status=self.block_status,
             override_dir=self.override_dir,
             reload_schedule=self.reload_schedule,
             schedule_path=self.schedule_path,
@@ -234,6 +242,21 @@ class NotifierApp:
     def is_desktop_enabled(self) -> bool:
         return self.desktop.enabled
 
+    def set_block_enabled(self, block_id: str, enabled: bool) -> str:
+        try:
+            result = write_block_enabled(self.schedule_path, self.block_state_path, block_id, enabled)
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            return f"Не смог переключить блок: {exc}"
+
+        self.reload_schedule()
+        return format_block_toggle_result(result)
+
+    def block_status(self, block_id: str | None = None) -> str:
+        try:
+            return format_block_status(self.schedule_path, self.block_state_path, block_id)
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            return f"Не смог прочитать блоки: {exc}"
+
     def refresh_settings(self) -> None:
         previous = self.settings
         self.settings = load_settings(self.settings_path)
@@ -242,7 +265,7 @@ class NotifierApp:
             self.telegram = _make_telegram_client(self.settings)
 
     def reload_schedule(self) -> None:
-        self.schedule = load_schedule(self.schedule_path, self.override_dir)
+        self.schedule = load_schedule(self.schedule_path, self.override_dir, self.block_state_path)
 
 
 def format_startup_summary(schedule: Schedule, now: datetime, limit: int = 10) -> str:

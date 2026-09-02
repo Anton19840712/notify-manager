@@ -11,6 +11,10 @@ from day_notifier.bot_commands import BOT_COMMANDS
 
 Transport = Callable[[str, bytes], dict[str, Any]]
 MEAL_DONE_TEXT_PATTERN = re.compile(r"^\d+\s+(?:mi|pp|пп)\s+done$", re.IGNORECASE)
+PLAIN_BLOCK_TEXT_PATTERN = re.compile(
+    r"^(?:(?:подключить|включить|отключить|выключить)\s+блок(?:\s+\S+)?|статус\s+блок(?:а|ов)(?:\s+\S+)?|блоки)$",
+    re.IGNORECASE,
+)
 PLAIN_BOT_COMMAND_NAMES = frozenset(command.command for command in BOT_COMMANDS)
 
 
@@ -114,6 +118,7 @@ def _is_supported_command_text(text: str) -> bool:
         or command.lower() in PLAIN_BOT_COMMAND_NAMES
         or stripped.lower() == "отбой"
         or bool(MEAL_DONE_TEXT_PATTERN.match(stripped))
+        or bool(PLAIN_BLOCK_TEXT_PATTERN.match(stripped))
     )
 
 

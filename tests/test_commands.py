@@ -398,6 +398,60 @@ class CommandTests(unittest.TestCase):
         self.assertIn("выключены", off_result.reply)
         self.assertIn("сейчас включены", status_result.reply)
 
+    def test_block_on_command_uses_block_callback(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+            calls = []
+            context.set_block_enabled = (
+                lambda block_id, enabled: calls.append((block_id, enabled)) or "Блок включен: Молитвы Иоанна Златоуста."
+            )
+
+            result = handle_command("/block_on chrysostom-prayers", context)
+
+        self.assertEqual(calls, [("chrysostom-prayers", True)])
+        self.assertIn("Блок включен", result.reply)
+
+    def test_block_off_command_uses_default_chrysostom_block(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+            calls = []
+            context.set_block_enabled = (
+                lambda block_id, enabled: calls.append((block_id, enabled)) or "Блок выключен: Молитвы Иоанна Златоуста."
+            )
+
+            result = handle_command("/block_off", context)
+
+        self.assertEqual(calls, [("chrysostom-prayers", False)])
+        self.assertIn("Блок выключен", result.reply)
+
+    def test_block_status_command_uses_status_callback(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+            calls = []
+            context.block_status = (
+                lambda block_id=None: calls.append(block_id) or "Блоки:\n- chrysostom-prayers: выключен"
+            )
+
+            result = handle_command("/block_status", context)
+
+        self.assertEqual(calls, [None])
+        self.assertIn("chrysostom-prayers", result.reply)
+
+    def test_plain_russian_block_aliases_are_accepted_by_command_handler(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+            calls = []
+            context.set_block_enabled = (
+                lambda block_id, enabled: calls.append((block_id, enabled)) or f"{block_id}={enabled}"
+            )
+
+            on_result = handle_command("подключить блок chrysostom-prayers", context)
+            off_result = handle_command("отключить блок chrysostom-prayers", context)
+
+        self.assertEqual(calls, [("chrysostom-prayers", True), ("chrysostom-prayers", False)])
+        self.assertIn("chrysostom-prayers=True", on_result.reply)
+        self.assertIn("chrysostom-prayers=False", off_result.reply)
+
     def test_help_command_uses_botfather_safe_names(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             context = self.make_context(Path(temp_dir) / "inbox.md")
@@ -407,6 +461,7 @@ class CommandTests(unittest.TestCase):
         self.assertIn("/mi1 - съел 1 прием пищи", result.reply)
         self.assertIn("/stop_bot - остановить локальный notifier", result.reply)
         self.assertIn("/sd - перенести старт дня", result.reply)
+        self.assertIn("/block_on - подключить блок", result.reply)
 
 
 if __name__ == "__main__":

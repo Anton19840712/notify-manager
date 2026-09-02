@@ -331,6 +331,40 @@ class ConfigStateAppTests(unittest.TestCase):
         self.assertTrue(app.stop_requested)
         self.assertIn("Останавливаю notify-manager", calls[-1][1])
 
+    def test_process_telegram_block_on_command_writes_block_state_and_reloads_schedule(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_project_files(root)
+            add_optional_prayer_block(root)
+            app = NotifierApp(root)
+            calls = []
+            app.telegram = RecordingTelegram(
+                calls,
+                commands=[TelegramCommand(update_id=10, text="/block_on chrysostom-prayers")],
+            )
+
+            app.process_telegram_commands()
+
+            block_state = json.loads((root / "data" / "block_state.json").read_text(encoding="utf-8"))
+            events = app.schedule.events_for_date(datetime(2026, 8, 30).date())
+
+        self.assertTrue(block_state["blocks"]["chrysostom-prayers"]["enabled"])
+        self.assertIn("Блок включен", calls[-1][1])
+        self.assertIn("chrysostom-prayers", calls[-1][1])
+        self.assertIn("chrysostom-prayer-01", [event.event_id for event in events])
+
+    def test_block_status_reports_effective_block_state(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_project_files(root)
+            add_optional_prayer_block(root)
+            app = NotifierApp(root)
+
+            result = app.block_status()
+
+        self.assertIn("chrysostom-prayers", result)
+        self.assertIn("выключен", result)
+
     def test_shift_day_writes_override_and_returns_summary(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -456,6 +490,27 @@ def write_project_files(root: Path) -> None:
         ),
         encoding="utf-8",
     )
+
+
+def add_optional_prayer_block(root: Path) -> None:
+    schedule_path = root / "config" / "schedule.json"
+    data = json.loads(schedule_path.read_text(encoding="utf-8"))
+    data["blocks"] = {
+        "chrysostom-prayers": {
+            "title": "Молитвы Иоанна Златоуста",
+            "enabled": False,
+        }
+    }
+    data["events"].append(
+        {
+            "id": "chrysostom-prayer-01",
+            "block": "chrysostom-prayers",
+            "time": "05:00",
+            "title": "Молитва Иоанна Златоуста 1/16",
+            "message": "Господи, не лиши мене небесных Твоих благ.",
+        }
+    )
+    schedule_path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
 
 
 if __name__ == "__main__":

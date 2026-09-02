@@ -19,7 +19,7 @@ The bedtime event opens `data/audio/otboj.mp3` before sending the `Отбой` T
 
 ## Optional Blocks
 
-Optional practice blocks are stored in `config/schedule.json` under `blocks`. Events with a `block` field stay in the schedule file, but they are delivered only when that block has `"enabled": true`.
+Optional practice blocks are stored in `config/schedule.json` under `blocks`. Events with a `block` field stay in the schedule file, but they are delivered only when that block is enabled.
 
 The Saint John Chrysostom hourly prayer block is stored as `chrysostom-prayers` and disabled by default:
 
@@ -29,7 +29,7 @@ The Saint John Chrysostom hourly prayer block is stored as `chrysostom-prayers` 
 }
 ```
 
-Set it to `true` and restart the notifier to reconnect the hourly reminders from `05:00` through `20:00`.
+Use `/block_on`, `/block_off`, and `/block_status` in Telegram to toggle runtime block state. Runtime overrides are saved to `data/block_state.json`, so the base schedule stays clean while the live setting survives notifier restarts.
 
 ## Run
 
@@ -155,6 +155,8 @@ This writes a local one-day override to `data/day_overrides/`. Override files ar
 - `/mi1`, `/mi2`, `/mi3`, `/mi4` - mark the selected meal as completed now.
 - `/otboy`, `/отбой`, or `отбой` - delete tracked bot-chat messages and leave one bedtime confirmation.
 - `/desktop on`, `/desktop off`, `/desktop status`, `/desktop_on`, `/desktop_off`, `/desktop_status` - control center-screen MsgBox reminders.
+- `/block_on`, `/block_on chrysostom-prayers`, `/block_off`, `/block_off chrysostom-prayers`, `/block_status` - connect, disconnect, or inspect optional practice blocks.
+- `подключить блок chrysostom-prayers`, `отключить блок chrysostom-prayers`, or `блоки` - plain-text aliases for block control.
 - `/stop_bot` - stop the local notifier process after sending a confirmation reply.
 - `/inbox text` - append a small task to `data/inbox.md`.
 

@@ -27,6 +27,9 @@ class BotCommandRegistryTests(unittest.TestCase):
         self.assertIn({"command": "sd", "description": "перенести старт дня, пример /sd 10:00"}, payload)
         self.assertIn({"command": "stop_bot", "description": "остановить локальный notifier"}, payload)
         self.assertIn({"command": "otboy", "description": "очистить чат перед сном"}, payload)
+        self.assertIn({"command": "block_on", "description": "подключить блок"}, payload)
+        self.assertIn({"command": "block_off", "description": "отключить блок"}, payload)
+        self.assertIn({"command": "block_status", "description": "статус блоков"}, payload)
 
     def test_help_text_is_generated_from_same_registry(self):
         help_text = format_bot_commands_help()
@@ -35,6 +38,7 @@ class BotCommandRegistryTests(unittest.TestCase):
         self.assertIn("/desktop_on - включить desktop окна", help_text)
         self.assertIn("/stop_bot - остановить локальный notifier", help_text)
         self.assertIn("/sd - перенести старт дня, пример /sd 10:00", help_text)
+        self.assertIn("/block_on - подключить блок", help_text)
 
 
 if __name__ == "__main__":

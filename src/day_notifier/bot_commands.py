@@ -30,6 +30,9 @@ BOT_COMMANDS: tuple[BotCommandDefinition, ...] = (
     BotCommandDefinition("desktop_on", "включить desktop окна"),
     BotCommandDefinition("desktop_off", "выключить desktop окна"),
     BotCommandDefinition("desktop_status", "статус desktop окон"),
+    BotCommandDefinition("block_on", "подключить блок"),
+    BotCommandDefinition("block_off", "отключить блок"),
+    BotCommandDefinition("block_status", "статус блоков"),
     BotCommandDefinition("stop_bot", "остановить локальный notifier"),
     BotCommandDefinition("inbox", "добавить текст в inbox"),
     BotCommandDefinition("otboy", "очистить чат перед сном"),
@@ -52,6 +55,7 @@ def format_bot_commands_help(commands: Iterable[BotCommandDefinition] = BOT_COMM
     lines.extend(f"/{command.command} - {command.description}" for command in command_list)
     lines.append("")
     lines.append("Аргументы: /sd 10:00, /snooze 10, /recalc food 4, /inbox текст.")
+    lines.append("Блоки: /block_on, /block_off, /block_status или /block_on chrysostom-prayers.")
     lines.append("Прием пищи: /mi1, /mi2, /mi3, /mi4 или /2 mi done.")
     return "\n".join(lines)
 

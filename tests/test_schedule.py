@@ -63,6 +63,60 @@ class ScheduleTests(unittest.TestCase):
 
         self.assertEqual([event.event_id for event in events], ["wake", "optional-prayer-1"])
 
+    def test_block_override_can_enable_disabled_event_block(self):
+        schedule = Schedule.from_dict(
+            {
+                "blocks": {
+                    "optional-prayers": {
+                        "enabled": False,
+                    }
+                },
+                "events": [
+                    {"id": "wake", "time": "04:00", "title": "Подъем", "message": "Подъем"},
+                    {
+                        "id": "optional-prayer-1",
+                        "block": "optional-prayers",
+                        "time": "05:00",
+                        "title": "Опциональная молитва",
+                        "message": "Текст молитвы",
+                    },
+                ],
+                "cycles": [],
+            },
+            block_overrides={"optional-prayers": True},
+        )
+
+        events = schedule.events_for_date(date(2026, 8, 30))
+
+        self.assertEqual([event.event_id for event in events], ["wake", "optional-prayer-1"])
+
+    def test_block_override_can_disable_enabled_event_block(self):
+        schedule = Schedule.from_dict(
+            {
+                "blocks": {
+                    "optional-prayers": {
+                        "enabled": True,
+                    }
+                },
+                "events": [
+                    {"id": "wake", "time": "04:00", "title": "Подъем", "message": "Подъем"},
+                    {
+                        "id": "optional-prayer-1",
+                        "block": "optional-prayers",
+                        "time": "05:00",
+                        "title": "Опциональная молитва",
+                        "message": "Текст молитвы",
+                    },
+                ],
+                "cycles": [],
+            },
+            block_overrides={"optional-prayers": False},
+        )
+
+        events = schedule.events_for_date(date(2026, 8, 30))
+
+        self.assertEqual([event.event_id for event in events], ["wake"])
+
     def test_day_override_can_suppress_fixed_events_for_one_day(self):
         schedule = Schedule.from_dict(
             {

@@ -7,6 +7,8 @@ from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from typing import Any
 
+from day_notifier.blocks import load_block_overrides
+
 MEAL_TITLE_PATTERN = re.compile(r"^\d+\s*пп$", re.IGNORECASE)
 MEAL_EVENT_ID_PATTERN = re.compile(r"^(?:override-)?meal-\d+$", re.IGNORECASE)
 PRE_MEAL_OFFSET_MINUTES = 10
@@ -33,6 +35,7 @@ class Schedule:
         relative_cycles: list[dict[str, Any]] | None = None,
         rotating_events: list[dict[str, Any]] | None = None,
         day_overrides: dict[str, dict[str, Any]] | None = None,
+        block_overrides: dict[str, bool] | None = None,
     ) -> None:
         self._blocks = blocks or {}
         self._events = events or []
@@ -40,12 +43,14 @@ class Schedule:
         self._relative_cycles = relative_cycles or []
         self._rotating_events = rotating_events or []
         self._day_overrides = day_overrides or {}
+        self._block_overrides = block_overrides or {}
 
     @classmethod
     def from_dict(
         cls,
         data: dict[str, Any],
         day_overrides: dict[str, dict[str, Any]] | None = None,
+        block_overrides: dict[str, bool] | None = None,
     ) -> "Schedule":
         return cls(
             blocks=dict(data.get("blocks", {})),
@@ -54,6 +59,7 @@ class Schedule:
             relative_cycles=list(data.get("relative_cycles", [])),
             rotating_events=list(data.get("rotating_events", [])),
             day_overrides=day_overrides,
+            block_overrides=block_overrides,
         )
 
     def events_for_date(self, day: date) -> list[ScheduleEvent]:
@@ -64,7 +70,7 @@ class Schedule:
 
         for event in self._events:
             event_id = str(event["id"])
-            if event_id in suppressed_events or not _is_enabled_by_block(event, self._blocks):
+            if event_id in suppressed_events or not _is_enabled_by_block(event, self._blocks, self._block_overrides):
                 continue
             expanded.append(
                 ScheduleEvent(
@@ -235,9 +241,18 @@ class Schedule:
         return events[:limit]
 
 
-def load_schedule(path: Path, override_dir: Path | None = None) -> Schedule:
+def load_schedule(
+    path: Path,
+    override_dir: Path | None = None,
+    block_state_path: Path | None = None,
+) -> Schedule:
     day_overrides = load_day_overrides(override_dir) if override_dir is not None else {}
-    return Schedule.from_dict(json.loads(path.read_text(encoding="utf-8")), day_overrides=day_overrides)
+    block_overrides = load_block_overrides(block_state_path) if block_state_path is not None else {}
+    return Schedule.from_dict(
+        json.loads(path.read_text(encoding="utf-8")),
+        day_overrides=day_overrides,
+        block_overrides=block_overrides,
+    )
 
 
 def load_day_overrides(override_dir: Path) -> dict[str, dict[str, Any]]:
@@ -257,10 +272,17 @@ def _parse_time(value: str) -> time:
     return time(hour=int(hour), minute=int(minute))
 
 
-def _is_enabled_by_block(item: dict[str, Any], blocks: dict[str, Any]) -> bool:
+def _is_enabled_by_block(
+    item: dict[str, Any],
+    blocks: dict[str, Any],
+    block_overrides: dict[str, bool],
+) -> bool:
     block_id = str(item.get("block", "")).strip()
     if not block_id:
         return True
+
+    if block_id in block_overrides:
+        return block_overrides[block_id]
 
     block = blocks.get(block_id, {})
     if isinstance(block, bool):

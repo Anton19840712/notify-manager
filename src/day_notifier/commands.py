@@ -25,6 +25,7 @@ MEAL_DONE_PATTERNS = [
     re.compile(r"^/mi\s+(\d+)\s+done$", re.IGNORECASE),
 ]
 QUICK_MEAL_DONE_PATTERN = re.compile(r"^/?mi(\d+)$", re.IGNORECASE)
+DEFAULT_BLOCK_ID = "chrysostom-prayers"
 DESKTOP_COMMAND_ALIASES = {
     "/desktop_on": "on",
     "desktop_on": "on",
@@ -53,6 +54,8 @@ class CommandContext:
     now: Callable[[], datetime]
     set_desktop_enabled: Callable[[bool], None] | None = None
     is_desktop_enabled: Callable[[], bool] | None = None
+    set_block_enabled: Callable[[str, bool], str] | None = None
+    block_status: Callable[[str | None], str] | None = None
     override_dir: Path | None = None
     reload_schedule: Callable[[], None] | None = None
     schedule_path: Path | None = None
@@ -67,6 +70,13 @@ class CommandResult:
 
 def handle_command(text: str, context: CommandContext) -> CommandResult:
     stripped = text.strip()
+    block_action = _parse_plain_block_command(stripped)
+    if block_action is not None:
+        enabled, block_id = block_action
+        if enabled is None:
+            return CommandResult(reply=_block_status(block_id or None, context))
+        return CommandResult(reply=_set_block_enabled(block_id, enabled, context))
+
     meal_done_number = _parse_meal_done_number(stripped)
     if meal_done_number is not None:
         return CommandResult(reply=_meal_done(meal_done_number, context))
@@ -106,6 +116,18 @@ def handle_command(text: str, context: CommandContext) -> CommandResult:
 
     if command in DESKTOP_COMMAND_ALIASES:
         return CommandResult(reply=_desktop(DESKTOP_COMMAND_ALIASES[command], context))
+
+    if command in {"/block_on", "block_on"}:
+        return CommandResult(reply=_set_block_enabled(argument, True, context))
+
+    if command in {"/block_off", "block_off"}:
+        return CommandResult(reply=_set_block_enabled(argument, False, context))
+
+    if command in {"/block_status", "block_status"}:
+        return CommandResult(reply=_block_status(argument.strip() or None, context))
+
+    if command in {"/block", "block"}:
+        return CommandResult(reply=_block(argument, context))
 
     if command == "/recalc":
         return CommandResult(reply=_recalc(argument, context))
@@ -178,6 +200,35 @@ def _desktop(argument: str, context: CommandContext) -> str:
         state = "включены" if context.is_desktop_enabled() else "выключены"
         return f"Desktop-уведомления сейчас {state}."
     return "Используй: /desktop on, /desktop off или /desktop status."
+
+
+def _set_block_enabled(argument: str, enabled: bool, context: CommandContext) -> str:
+    if context.set_block_enabled is None:
+        return "Подключаемые блоки недоступны в этом режиме."
+    block_id = argument.strip() or DEFAULT_BLOCK_ID
+    return context.set_block_enabled(block_id, enabled)
+
+
+def _block_status(block_id: str | None, context: CommandContext) -> str:
+    if context.block_status is None:
+        return "Статус блоков недоступен в этом режиме."
+    return context.block_status(block_id)
+
+
+def _block(argument: str, context: CommandContext) -> str:
+    parts = argument.strip().split(maxsplit=1)
+    if not parts:
+        return _block_status(None, context)
+
+    action = parts[0].lower()
+    block_id = parts[1] if len(parts) > 1 else ""
+    if action in {"on", "enable", "вкл", "включить", "подключить"}:
+        return _set_block_enabled(block_id, True, context)
+    if action in {"off", "disable", "выкл", "выключить", "отключить"}:
+        return _set_block_enabled(block_id, False, context)
+    if action in {"status", "статус"}:
+        return _block_status(block_id.strip() or None, context)
+    return "Используй: /block_on chrysostom-prayers, /block_off chrysostom-prayers или /block_status."
 
 
 def _recalc(argument: str, context: CommandContext) -> str:
@@ -282,6 +333,30 @@ def _parse_meal_done_number(text: str) -> int | None:
 def _parse_quick_meal_done_number(text: str) -> int | None:
     match = QUICK_MEAL_DONE_PATTERN.match(text)
     return int(match.group(1)) if match else None
+
+
+def _parse_plain_block_command(text: str) -> tuple[bool | None, str] | None:
+    lowered = text.lower()
+    for prefix, enabled in [
+        ("подключить блок", True),
+        ("включить блок", True),
+        ("отключить блок", False),
+        ("выключить блок", False),
+    ]:
+        if lowered == prefix:
+            return enabled, ""
+        if lowered.startswith(prefix + " "):
+            return enabled, text[len(prefix) :].strip()
+
+    for prefix in ["статус блока", "статус блоков"]:
+        if lowered == prefix:
+            return None, ""
+        if lowered.startswith(prefix + " "):
+            return None, text[len(prefix) :].strip()
+
+    if lowered == "блоки":
+        return None, ""
+    return None
 
 
 def _looks_like_time(value: str) -> bool:

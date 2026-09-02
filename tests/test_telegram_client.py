@@ -181,6 +181,51 @@ class TelegramClientTests(unittest.TestCase):
             [(10, "mi2", 77), (11, "sd 10:00", 78), (12, "desktop_on", 79), (13, "stop_bot", 80)],
         )
 
+    def test_get_commands_accepts_plain_russian_block_aliases(self):
+        transport = FakeTransport(
+            {
+                "ok": True,
+                "result": [
+                    {
+                        "update_id": 10,
+                        "message": {
+                            "message_id": 77,
+                            "chat": {"id": 456},
+                            "text": "подключить блок chrysostom-prayers",
+                        },
+                    },
+                    {
+                        "update_id": 11,
+                        "message": {
+                            "message_id": 78,
+                            "chat": {"id": 456},
+                            "text": "отключить блок chrysostom-prayers",
+                        },
+                    },
+                    {
+                        "update_id": 12,
+                        "message": {"message_id": 79, "chat": {"id": 456}, "text": "блоки"},
+                    },
+                    {
+                        "update_id": 13,
+                        "message": {"message_id": 80, "chat": {"id": 456}, "text": "случайная мысль"},
+                    },
+                ],
+            }
+        )
+        client = TelegramClient("123:abc", "456", transport=transport)
+
+        commands = client.get_commands()
+
+        self.assertEqual(
+            [(command.update_id, command.text, command.message_id) for command in commands],
+            [
+                (10, "подключить блок chrysostom-prayers", 77),
+                (11, "отключить блок chrysostom-prayers", 78),
+                (12, "блоки", 79),
+            ],
+        )
+
     def test_delete_messages_uses_batch_api(self):
         transport = FakeTransport({"ok": True, "result": True})
         client = TelegramClient("123:abc", "456", transport=transport)
