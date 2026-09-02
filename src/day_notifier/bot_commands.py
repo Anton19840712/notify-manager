@@ -27,6 +27,7 @@ BOT_COMMANDS: tuple[BotCommandDefinition, ...] = (
     BotCommandDefinition("mi2", "съел 2 прием пищи"),
     BotCommandDefinition("mi3", "съел 3 прием пищи"),
     BotCommandDefinition("mi4", "съел 4 прием пищи"),
+    BotCommandDefinition("mv", "голос приема пищи"),
     BotCommandDefinition("sd", "перенести старт дня, пример /sd 10:00"),
     BotCommandDefinition("desktop_on", "включить desktop окна"),
     BotCommandDefinition("desktop_off", "выключить desktop окна"),
@@ -69,6 +70,7 @@ def format_bot_commands_help(commands: Iterable[BotCommandDefinition] = BOT_COMM
     lines.append("Молитвы: /prayers_on, /prayers_off, /chrysostom_on, /chrysostom_off.")
     lines.append("Id для /block_on: self-development, training, prayers, chrysostom-prayers.")
     lines.append("Прием пищи: /mi1, /mi2, /mi3, /mi4 или /2 mi done.")
+    lines.append("Голос еды: /mv, /mv 3 или /mv female_sonia.")
     lines.append("Процессы: /processes читает data/process-backlog.xlsx или .csv.")
     return "\n".join(lines)
 

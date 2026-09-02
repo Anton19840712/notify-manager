@@ -17,15 +17,17 @@ The wake-up event first opens `data/audio/rota-podem.mp3`, waits 2 seconds, then
 
 The bedtime event opens `data/audio/otboj.mp3` before sending the `Отбой` Telegram and desktop reminders.
 
-Meal events open numbered assistant voice cues before Telegram and desktop reminders:
+Meal events open numbered assistant voice cues before Telegram and desktop reminders. The active cue set is selected by `/mv`; default is `male_commander`.
 
-- `data/audio/meal-1.mp3` - first meal.
-- `data/audio/meal-2.mp3` - second meal.
-- `data/audio/meal-3.mp3` - third meal.
-- `data/audio/meal-4.mp3` - fourth meal.
-- `data/audio/meal-5.mp3` - extra recalculated meal when needed.
+- `data/audio/meal_voices/male_jarvis/meal-1.mp3` through `meal-5.mp3`.
+- `data/audio/meal_voices/male_commander/meal-1.mp3` through `meal-5.mp3`.
+- `data/audio/meal_voices/female_sonia/meal-1.mp3` through `meal-5.mp3`.
+- `data/audio/meal_voices/female_libby/meal-1.mp3` through `meal-5.mp3`.
+- `data/audio/meal_voices/female_ava/meal-1.mp3` through `meal-5.mp3`.
+- `data/audio/meal_voices/female_aria/meal-1.mp3` through `meal-5.mp3`.
+- `data/audio/meal_voices/female_svetlana/meal-1.mp3` through `meal-5.mp3`.
 
-If `meal-N.mp3` is missing, the notifier falls back to `meal-N.wav`. If neither file exists, it logs a warning and continues the regular reminder.
+If the selected profile file is missing, the notifier falls back to the legacy root files `data/audio/meal-N.mp3` or `meal-N.wav`. If neither file exists, it logs a warning and continues the regular reminder.
 
 ## Optional Blocks
 
@@ -170,6 +172,8 @@ This writes a local one-day override to `data/day_overrides/`. Override files ar
 - `/2 mi done`, `2 mi done`, `2 pp done`, `2 пп done`, `/ 2 mi done`, or `/mi 2 done` - mark meal 2 as completed now and recalculate today's remaining meal reminders.
 - `/sd 10:00` or `sd 10:00` - rebuild today's start-relative reminders from 10:00; tomorrow keeps the base flow.
 - `/mi1`, `/mi2`, `/mi3`, `/mi4` - mark the selected meal as completed now.
+- `/mv` - show the active meal voice and all profile ids.
+- `/mv 3` or `/mv female_sonia` - switch the meal voice profile without restarting notify-manager.
 - `/otboy`, `/отбой`, or `отбой` - delete tracked bot-chat messages and leave one bedtime confirmation.
 - `/desktop on`, `/desktop off`, `/desktop status`, `/desktop_on`, `/desktop_off`, `/desktop_status` - control center-screen MsgBox reminders.
 - `/block_on self-development`, `/block_off training`, `/block_status`, or `/blocks` - connect, disconnect, or inspect optional practice blocks.

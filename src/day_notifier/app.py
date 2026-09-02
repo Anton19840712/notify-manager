@@ -21,6 +21,7 @@ from day_notifier.commands import CommandContext, handle_command
 from day_notifier.config import Settings, load_settings, set_desktop_enabled
 from day_notifier.desktop import DesktopNotifier
 from day_notifier.event_formatting import format_event_line, format_notification_text
+from day_notifier.meal_voice import format_meal_voice_status, set_meal_voice_profile
 from day_notifier.overrides import (
     format_min_interval_food_events,
     write_min_interval_food_override,
@@ -62,6 +63,7 @@ class NotifierApp:
         self.settings = load_settings(self.settings_path)
         self.state = JsonStateStore(root / "data" / "state.json")
         self.inbox_path = root / "data" / "inbox.md"
+        self.meal_voice_state_path = root / "data" / "audio" / "meal_voice_state.json"
         self.process_backlog_path = self._find_process_backlog_path()
         self.desktop = DesktopNotifier(enabled=self.settings.desktop_enabled)
         self.audio = AudioCuePlayer(root, morning_prayer_enabled=self.is_morning_prayer_enabled)
@@ -137,6 +139,8 @@ class NotifierApp:
             cleanup_telegram_chat=self.cleanup_telegram_chat,
             request_shutdown=self.request_shutdown,
             processes_today=self.processes_today,
+            meal_voice_status=self.meal_voice_status,
+            set_meal_voice_profile=self.set_meal_voice_profile,
         )
         for command in commands:
             try:
@@ -202,6 +206,15 @@ class NotifierApp:
             logging.warning("Could not read process backlog: %s", exc)
             return f"Не смог прочитать process-backlog: {exc}"
         return format_processes_today(items, current.date())
+
+    def meal_voice_status(self) -> str:
+        return format_meal_voice_status(self.meal_voice_state_path)
+
+    def set_meal_voice_profile(self, profile_id: str) -> str:
+        try:
+            return set_meal_voice_profile(self.meal_voice_state_path, profile_id)
+        except OSError as exc:
+            return f"Не смог переключить голос приема пищи: {exc}"
 
     def test_desktop_notification(self) -> None:
         self.desktop.show("notify-manager", "Тест desktop MsgBox: центральное окно работает.", blocking=True)

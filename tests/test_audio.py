@@ -130,6 +130,51 @@ class AudioCuePlayerTests(unittest.TestCase):
         self.assertTrue(played)
         self.assertEqual(calls, [("open", meal_path)])
 
+    def test_meal_event_uses_active_voice_profile_audio(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            state_path = root / "data" / "audio" / "meal_voice_state.json"
+            meal_path = root / "data" / "audio" / "meal_voices" / "female_sonia" / "meal-2.mp3"
+            state_path.parent.mkdir(parents=True)
+            meal_path.parent.mkdir(parents=True)
+            state_path.write_text('{"active_profile": "female_sonia"}', encoding="utf-8")
+            meal_path.write_bytes(b"meal")
+            calls = []
+            player = AudioCuePlayer(root=root, opener=lambda path: calls.append(("open", path)))
+            event = ScheduleEvent(
+                event_id="meal-2",
+                title="2 пп",
+                message="2 прием пищи",
+                when=datetime(2026, 9, 2, 9, 40),
+            )
+
+            played = player.play_for_event(event)
+
+        self.assertTrue(played)
+        self.assertEqual(calls, [("open", meal_path)])
+
+    def test_meal_event_falls_back_to_legacy_audio_when_profile_file_is_missing(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            state_path = root / "data" / "audio" / "meal_voice_state.json"
+            meal_path = root / "data" / "audio" / "meal-2.mp3"
+            state_path.parent.mkdir(parents=True)
+            state_path.write_text('{"active_profile": "female_sonia"}', encoding="utf-8")
+            meal_path.write_bytes(b"meal")
+            calls = []
+            player = AudioCuePlayer(root=root, opener=lambda path: calls.append(("open", path)))
+            event = ScheduleEvent(
+                event_id="meal-2",
+                title="2 пп",
+                message="2 прием пищи",
+                when=datetime(2026, 9, 2, 9, 40),
+            )
+
+            played = player.play_for_event(event)
+
+        self.assertTrue(played)
+        self.assertEqual(calls, [("open", meal_path)])
+
     def test_override_meal_event_opens_numbered_meal_audio(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

@@ -504,6 +504,24 @@ class ConfigStateAppTests(unittest.TestCase):
         self.assertIn("Процессы на сегодня", calls[-1][1])
         self.assertIn("Сходить в магазин за кока-колой", calls[-1][1])
 
+    def test_process_telegram_meal_voice_command_writes_profile_state(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_project_files(root)
+            app = NotifierApp(root)
+            calls = []
+            app.telegram = RecordingTelegram(
+                calls,
+                commands=[TelegramCommand(update_id=10, text="/mv female_ava")],
+            )
+
+            app.process_telegram_commands()
+
+            state = json.loads((root / "data" / "audio" / "meal_voice_state.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(state["active_profile"], "female_ava")
+        self.assertIn("female_ava", calls[-1][1])
+
     def test_block_status_reports_effective_block_state(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

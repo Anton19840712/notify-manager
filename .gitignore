@@ -4,6 +4,7 @@ day-notifier/config/settings.json
 day-notifier/data/state.json
 day-notifier/data/notifier.pid
 day-notifier/data/block_state.json
+day-notifier/data/audio/meal_voice_state.json
 day-notifier/data/day_overrides/
 day-notifier/logs/
 

@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 from typing import Callable
 
+from day_notifier.meal_voice import load_active_meal_voice_profile
 from day_notifier.schedule import ScheduleEvent
 
 
@@ -15,6 +16,8 @@ BEDTIME_EVENT_ID = "bedtime"
 WAKE_UP_CUE_AUDIO_PATH = Path("data") / "audio" / "rota-podem.mp3"
 MORNING_PRAYER_AUDIO_PATH = Path("data") / "audio" / "morning-prays.mp3"
 BEDTIME_AUDIO_PATH = Path("data") / "audio" / "otboj.mp3"
+MEAL_VOICE_DIR = Path("data") / "audio" / "meal_voices"
+MEAL_VOICE_STATE_PATH = Path("data") / "audio" / "meal_voice_state.json"
 WAKE_UP_CUE_DELAY_SECONDS = 2
 MEAL_EVENT_ID_PATTERN = re.compile(r"^(?:override-)?meal-(\d+)$", re.IGNORECASE)
 MEAL_TITLE_PATTERN = re.compile(r"^(\d+)\s*пп$", re.IGNORECASE)
@@ -31,14 +34,19 @@ class AudioCuePlayer:
         audio_path: Path = MORNING_PRAYER_AUDIO_PATH,
         cue_audio_path: Path = WAKE_UP_CUE_AUDIO_PATH,
         bedtime_audio_path: Path = BEDTIME_AUDIO_PATH,
+        meal_voice_dir: Path = MEAL_VOICE_DIR,
+        meal_voice_state_path: Path = MEAL_VOICE_STATE_PATH,
         cue_delay_seconds: int = WAKE_UP_CUE_DELAY_SECONDS,
         opener: OpenAudioFile | None = None,
         sleeper: Sleep | None = None,
         morning_prayer_enabled: IsMorningPrayerEnabled | None = None,
     ) -> None:
         self.prayer_path = root / audio_path
+        self.audio_root = self.prayer_path.parent
         self.cue_path = root / cue_audio_path
         self.bedtime_path = root / bedtime_audio_path
+        self.meal_voice_dir = root / meal_voice_dir
+        self.meal_voice_state_path = root / meal_voice_state_path
         self.cue_delay_seconds = cue_delay_seconds
         self._opener = opener or _open_audio_file
         self._sleeper = sleeper or time.sleep
@@ -75,10 +83,18 @@ class AudioCuePlayer:
         return True
 
     def _meal_path(self, meal_number: int) -> Path:
-        mp3_path = self.prayer_path.parent / f"meal-{meal_number}.mp3"
-        if mp3_path.exists():
-            return mp3_path
-        return self.prayer_path.parent / f"meal-{meal_number}.wav"
+        active_profile = load_active_meal_voice_profile(self.meal_voice_state_path)
+        filename = f"meal-{meal_number}"
+        candidates = [
+            self.meal_voice_dir / active_profile / f"{filename}.mp3",
+            self.meal_voice_dir / active_profile / f"{filename}.wav",
+            self.audio_root / f"{filename}.mp3",
+            self.audio_root / f"{filename}.wav",
+        ]
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+        return candidates[-1]
 
 
 def _open_audio_file(path: Path) -> None:

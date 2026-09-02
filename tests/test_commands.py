@@ -171,6 +171,41 @@ class CommandTests(unittest.TestCase):
 
         self.assertEqual(result.reply, "На сегодня внеплановых процессов нет.")
 
+    def test_meal_voice_status_command_uses_status_callback(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+            context.meal_voice_status = lambda: "Голос приема пищи:\nАктивный: 2. male_commander"
+
+            result = handle_command("/mv", context)
+
+        self.assertIn("Активный: 2. male_commander", result.reply)
+
+    def test_meal_voice_switch_command_uses_switch_callback(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+            calls = []
+            context.set_meal_voice_profile = (
+                lambda profile_id: calls.append(profile_id) or "Голос приема пищи переключен: female_sonia"
+            )
+
+            result = handle_command("/mv 3", context)
+
+        self.assertEqual(calls, ["3"])
+        self.assertIn("female_sonia", result.reply)
+
+    def test_meal_voice_full_command_alias_uses_switch_callback(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+            calls = []
+            context.set_meal_voice_profile = (
+                lambda profile_id: calls.append(profile_id) or "Голос приема пищи переключен: female_ava"
+            )
+
+            result = handle_command("/meal_voice female_ava", context)
+
+        self.assertEqual(calls, ["female_ava"])
+        self.assertIn("female_ava", result.reply)
+
     def test_today_command_hides_pre_meal_reminders(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             context = self.make_context(Path(temp_dir) / "inbox.md")
@@ -555,6 +590,7 @@ class CommandTests(unittest.TestCase):
         self.assertIn("/block_on - подключить блок", result.reply)
         self.assertIn("/training_off - выключить тренировки", result.reply)
         self.assertIn("/processes - процессы на сегодня", result.reply)
+        self.assertIn("/mv - голос приема пищи", result.reply)
 
 
 if __name__ == "__main__":

@@ -82,6 +82,8 @@ class CommandContext:
     cleanup_telegram_chat: Callable[[], str] | None = None
     request_shutdown: Callable[[], None] | None = None
     processes_today: Callable[[], str] | None = None
+    meal_voice_status: Callable[[], str] | None = None
+    set_meal_voice_profile: Callable[[str], str] | None = None
 
 
 @dataclass(frozen=True)
@@ -134,6 +136,9 @@ def handle_command(text: str, context: CommandContext) -> CommandResult:
 
     if command in {"/processes", "processes"}:
         return CommandResult(reply=_processes(context))
+
+    if command in {"/mv", "mv", "/meal_voice", "meal_voice"}:
+        return CommandResult(reply=_meal_voice(argument, context))
 
     if command == "/desktop":
         return CommandResult(reply=_desktop(argument, context))
@@ -231,6 +236,17 @@ def _processes_or_empty(context: CommandContext) -> str:
     if context.processes_today is None:
         return ""
     return context.processes_today().strip()
+
+
+def _meal_voice(argument: str, context: CommandContext) -> str:
+    value = argument.strip()
+    if not value:
+        if context.meal_voice_status is None:
+            return "Голоса приема пищи недоступны в этом режиме."
+        return context.meal_voice_status()
+    if context.set_meal_voice_profile is None:
+        return "Переключение голоса приема пищи недоступно в этом режиме."
+    return context.set_meal_voice_profile(value)
 
 
 def _desktop(argument: str, context: CommandContext) -> str:

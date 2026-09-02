@@ -27,6 +27,7 @@ class BotCommandRegistryTests(unittest.TestCase):
         self.assertIn({"command": "sd", "description": "перенести старт дня, пример /sd 10:00"}, payload)
         self.assertIn({"command": "stop_bot", "description": "остановить локальный notifier"}, payload)
         self.assertIn({"command": "otboy", "description": "очистить чат перед сном"}, payload)
+        self.assertIn({"command": "mv", "description": "голос приема пищи"}, payload)
         self.assertIn({"command": "block_on", "description": "подключить блок"}, payload)
         self.assertIn({"command": "block_off", "description": "отключить блок"}, payload)
         self.assertIn({"command": "block_status", "description": "статус блоков"}, payload)
@@ -53,6 +54,7 @@ class BotCommandRegistryTests(unittest.TestCase):
         self.assertIn("/training_off - выключить тренировки", help_text)
         self.assertIn("/prayers_off - выключить молитвы", help_text)
         self.assertIn("/processes - процессы на сегодня", help_text)
+        self.assertIn("/mv - голос приема пищи", help_text)
 
 
 if __name__ == "__main__":
