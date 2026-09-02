@@ -424,6 +424,95 @@ class ScheduleTests(unittest.TestCase):
             ],
         )
 
+    def test_lunch_nap_stays_fixed_when_base_meal_ends_at_nap_start(self):
+        schedule = Schedule.from_dict(
+            {
+                "events": [
+                    {
+                        "id": "lunch-nap-start",
+                        "time": "12:15",
+                        "title": "Досып / восстановление",
+                        "message": "1 час восстановления после 3 пп.",
+                    },
+                    {
+                        "id": "lunch-nap-end",
+                        "time": "13:15",
+                        "title": "Подъем после досыпа",
+                        "message": "Вернуться в работу.",
+                    },
+                ],
+                "cycles": [
+                    {
+                        "id": "food-cycle",
+                        "start_time": "12:05",
+                        "period_minutes": 145,
+                        "count": 1,
+                        "items": [
+                            {
+                                "offset_minutes": 0,
+                                "id_template": "meal-{n}",
+                                "title_template": "3 пп",
+                                "message_template": "3 прием пищи",
+                            }
+                        ],
+                    }
+                ],
+            }
+        )
+
+        events = schedule.events_for_date(date(2026, 9, 2))
+        by_id = {event.event_id: event for event in events}
+
+        self.assertEqual(by_id["lunch-nap-start"].when.strftime("%H:%M"), "12:15")
+        self.assertEqual(by_id["lunch-nap-end"].when.strftime("%H:%M"), "13:15")
+
+    def test_lunch_nap_shifts_after_overlapping_override_meal_window(self):
+        schedule = Schedule.from_dict(
+            {
+                "events": [
+                    {
+                        "id": "lunch-nap-start",
+                        "time": "12:15",
+                        "title": "Досып / восстановление",
+                        "message": "1 час восстановления после 3 пп.",
+                    },
+                    {
+                        "id": "lunch-nap-end",
+                        "time": "13:15",
+                        "title": "Подъем после досыпа",
+                        "message": "Вернуться в работу.",
+                    },
+                ],
+                "cycles": [],
+            },
+            day_overrides={
+                "2026-09-02": {
+                    "events": [
+                        {
+                            "id": "override-meal-2",
+                            "time": "12:35",
+                            "title": "2 пп",
+                            "message": "Пересчитанный прием пищи.",
+                        },
+                        {
+                            "id": "override-meal-3",
+                            "time": "15:00",
+                            "title": "3 пп",
+                            "message": "Пересчитанный прием пищи.",
+                        },
+                    ],
+                }
+            },
+        )
+
+        events = schedule.events_for_date(date(2026, 9, 2))
+        by_id = {event.event_id: event for event in events}
+
+        self.assertEqual(by_id["pre-override-meal-2"].when.strftime("%H:%M"), "12:25")
+        self.assertEqual(by_id["lunch-nap-start"].when.strftime("%H:%M"), "12:45")
+        self.assertEqual(by_id["lunch-nap-end"].when.strftime("%H:%M"), "13:45")
+        self.assertIn("Пересчитано", by_id["lunch-nap-start"].message)
+
     def test_ten_minute_task_catalog_exists_for_pre_meal_reminders(self):
         text = (ROOT / "data" / "ten-minute-tasks.md").read_text(encoding="utf-8")
 

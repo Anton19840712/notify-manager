@@ -216,6 +216,53 @@ class ConfigStateAppTests(unittest.TestCase):
         self.assertIn("07:15 1 пп", text)
         self.assertNotIn("10 минут до", text)
 
+    def test_format_startup_summary_shifts_lunch_nap_out_of_recalculated_meal(self):
+        schedule = Schedule.from_dict(
+            {
+                "events": [
+                    {
+                        "id": "lunch-nap-start",
+                        "time": "12:15",
+                        "title": "Досып / восстановление",
+                        "message": "1 час восстановления после 3 пп.",
+                    },
+                    {
+                        "id": "lunch-nap-end",
+                        "time": "13:15",
+                        "title": "Подъем после досыпа",
+                        "message": "Вернуться в работу.",
+                    },
+                ],
+                "cycles": [],
+            },
+            day_overrides={
+                "2026-09-02": {
+                    "events": [
+                        {
+                            "id": "override-meal-2",
+                            "time": "12:35",
+                            "title": "2 пп",
+                            "message": "Пересчитанный прием пищи.",
+                        },
+                        {
+                            "id": "override-meal-3",
+                            "time": "15:00",
+                            "title": "3 пп",
+                            "message": "Пересчитанный прием пищи.",
+                        },
+                    ],
+                }
+            },
+        )
+
+        text = format_startup_summary(schedule, datetime(2026, 9, 2, 12, 22), limit=4)
+
+        self.assertIn("12:35 2 пп", text)
+        self.assertIn("12:45 Досып / восстановление", text)
+        self.assertIn("13:45 Подъем после досыпа", text)
+        self.assertNotIn("12:15 Досып", text)
+        self.assertNotIn("10 минут до", text)
+
     def test_test_notification_sends_telegram_before_blocking_desktop_box(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             calls = []

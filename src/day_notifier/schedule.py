@@ -13,6 +13,9 @@ MEAL_TITLE_PATTERN = re.compile(r"^\d+\s*пп$", re.IGNORECASE)
 MEAL_EVENT_ID_PATTERN = re.compile(r"^(?:override-)?meal-\d+$", re.IGNORECASE)
 PRE_MEAL_EVENT_ID_PATTERN = re.compile(r"^pre-(?:override-)?meal-\d+$", re.IGNORECASE)
 PRE_MEAL_OFFSET_MINUTES = 10
+EATING_WINDOW_MINUTES = 10
+LUNCH_NAP_START_EVENT_ID = "lunch-nap-start"
+LUNCH_NAP_END_EVENT_ID = "lunch-nap-end"
 
 
 @dataclass(frozen=True)
@@ -123,6 +126,7 @@ class Schedule:
 
         expanded.extend(self._expand_rotating_events(day, override))
         expanded.extend(self._expand_relative_cycles(day, expanded, override))
+        expanded = _shift_lunch_nap_away_from_meals(day, expanded)
         expanded.extend(self._expand_pre_meal_events(day, expanded, override))
         return sorted(expanded, key=lambda event: event.when)
 
@@ -364,3 +368,93 @@ def _is_meal_event(event: ScheduleEvent) -> bool:
 
 def is_pre_meal_event(event: ScheduleEvent) -> bool:
     return bool(PRE_MEAL_EVENT_ID_PATTERN.match(event.event_id))
+
+
+def _shift_lunch_nap_away_from_meals(day: date, events: list[ScheduleEvent]) -> list[ScheduleEvent]:
+    start_event = _event_by_id(events, LUNCH_NAP_START_EVENT_ID)
+    end_event = _event_by_id(events, LUNCH_NAP_END_EVENT_ID)
+    if start_event is None or end_event is None:
+        return events
+
+    duration = end_event.when - start_event.when
+    if duration <= timedelta(0):
+        return events
+
+    meal_windows = _meal_avoid_windows(events)
+    shifted_start = _first_non_overlapping_start(start_event.when, duration, meal_windows)
+    if shifted_start == start_event.when:
+        return events
+
+    shifted_end = shifted_start + duration
+    if shifted_start.date() != day or shifted_end.date() != day:
+        return events
+
+    return [
+        _with_shifted_lunch_nap_start(event, shifted_start)
+        if event.event_id == LUNCH_NAP_START_EVENT_ID
+        else _with_shifted_lunch_nap_end(event, shifted_end)
+        if event.event_id == LUNCH_NAP_END_EVENT_ID
+        else event
+        for event in events
+    ]
+
+
+def _event_by_id(events: list[ScheduleEvent], event_id: str) -> ScheduleEvent | None:
+    return next((event for event in events if event.event_id == event_id), None)
+
+
+def _meal_avoid_windows(events: list[ScheduleEvent]) -> list[tuple[datetime, datetime]]:
+    return sorted(
+        (
+            (
+                event.when - timedelta(minutes=PRE_MEAL_OFFSET_MINUTES),
+                event.when + timedelta(minutes=EATING_WINDOW_MINUTES),
+            )
+            for event in events
+            if _is_meal_event(event)
+        ),
+        key=lambda window: window[0],
+    )
+
+
+def _first_non_overlapping_start(
+    preferred_start: datetime,
+    duration: timedelta,
+    avoid_windows: list[tuple[datetime, datetime]],
+) -> datetime:
+    start = preferred_start
+    while True:
+        end = start + duration
+        conflict = next(
+            (
+                window
+                for window in avoid_windows
+                if _overlaps(start, end, window[0], window[1])
+            ),
+            None,
+        )
+        if conflict is None:
+            return start
+        start = conflict[1]
+
+
+def _overlaps(left_start: datetime, left_end: datetime, right_start: datetime, right_end: datetime) -> bool:
+    return left_start < right_end and right_start < left_end
+
+
+def _with_shifted_lunch_nap_start(event: ScheduleEvent, shifted_start: datetime) -> ScheduleEvent:
+    return ScheduleEvent(
+        event_id=event.event_id,
+        title=event.title,
+        message=f"Пересчитано вокруг питания. {event.message}",
+        when=shifted_start,
+    )
+
+
+def _with_shifted_lunch_nap_end(event: ScheduleEvent, shifted_end: datetime) -> ScheduleEvent:
+    return ScheduleEvent(
+        event_id=event.event_id,
+        title=event.title,
+        message=event.message,
+        when=shifted_end,
+    )
