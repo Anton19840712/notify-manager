@@ -34,6 +34,26 @@ DESKTOP_COMMAND_ALIASES = {
     "/desktop_status": "status",
     "desktop_status": "status",
 }
+BLOCK_COMMAND_ALIASES: dict[str, tuple[str | None, bool | None]] = {
+    "/blocks": (None, None),
+    "blocks": (None, None),
+    "/selfdev_on": ("self-development", True),
+    "selfdev_on": ("self-development", True),
+    "/selfdev_off": ("self-development", False),
+    "selfdev_off": ("self-development", False),
+    "/training_on": ("training", True),
+    "training_on": ("training", True),
+    "/training_off": ("training", False),
+    "training_off": ("training", False),
+    "/prayers_on": ("prayers", True),
+    "prayers_on": ("prayers", True),
+    "/prayers_off": ("prayers", False),
+    "prayers_off": ("prayers", False),
+    "/chrysostom_on": ("chrysostom-prayers", True),
+    "chrysostom_on": ("chrysostom-prayers", True),
+    "/chrysostom_off": ("chrysostom-prayers", False),
+    "chrysostom_off": ("chrysostom-prayers", False),
+}
 
 
 class RuntimeState(Protocol):
@@ -116,6 +136,12 @@ def handle_command(text: str, context: CommandContext) -> CommandResult:
 
     if command in DESKTOP_COMMAND_ALIASES:
         return CommandResult(reply=_desktop(DESKTOP_COMMAND_ALIASES[command], context))
+
+    if command in BLOCK_COMMAND_ALIASES:
+        block_id, enabled = BLOCK_COMMAND_ALIASES[command]
+        if enabled is None:
+            return CommandResult(reply=_block_status(None, context))
+        return CommandResult(reply=_set_block_enabled(block_id or "", enabled, context))
 
     if command in {"/block_on", "block_on"}:
         return CommandResult(reply=_set_block_enabled(argument, True, context))

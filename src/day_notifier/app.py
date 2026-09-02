@@ -11,6 +11,7 @@ from day_notifier.audio import AudioCuePlayer
 from day_notifier.blocks import (
     block_status as format_block_status,
     format_block_toggle_result,
+    is_block_enabled as read_block_enabled,
     set_block_enabled as write_block_enabled,
 )
 from day_notifier.bot_commands import bot_command_payload, format_bot_command_sync_result
@@ -59,7 +60,7 @@ class NotifierApp:
         self.state = JsonStateStore(root / "data" / "state.json")
         self.inbox_path = root / "data" / "inbox.md"
         self.desktop = DesktopNotifier(enabled=self.settings.desktop_enabled)
-        self.audio = AudioCuePlayer(root)
+        self.audio = AudioCuePlayer(root, morning_prayer_enabled=self.is_morning_prayer_enabled)
         self.telegram = _make_telegram_client(self.settings)
         self.stop_requested = False
 
@@ -256,6 +257,13 @@ class NotifierApp:
             return format_block_status(self.schedule_path, self.block_state_path, block_id)
         except (OSError, ValueError, json.JSONDecodeError) as exc:
             return f"Не смог прочитать блоки: {exc}"
+
+    def is_morning_prayer_enabled(self) -> bool:
+        try:
+            return read_block_enabled(self.schedule_path, self.block_state_path, "prayers")
+        except (OSError, ValueError, json.JSONDecodeError):
+            logging.exception("Could not read prayers block state; keeping morning prayer audio enabled")
+            return True
 
     def refresh_settings(self) -> None:
         previous = self.settings

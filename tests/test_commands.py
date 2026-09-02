@@ -452,6 +452,44 @@ class CommandTests(unittest.TestCase):
         self.assertIn("chrysostom-prayers=True", on_result.reply)
         self.assertIn("chrysostom-prayers=False", off_result.reply)
 
+    def test_botfather_block_shortcuts_toggle_named_blocks(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+            calls = []
+            context.set_block_enabled = (
+                lambda block_id, enabled: calls.append((block_id, enabled)) or f"{block_id}={enabled}"
+            )
+
+            selfdev_result = handle_command("/selfdev_off", context)
+            training_result = handle_command("/training_on", context)
+            prayers_result = handle_command("/prayers_off", context)
+            chrysostom_result = handle_command("/chrysostom_on", context)
+
+        self.assertEqual(
+            calls,
+            [
+                ("self-development", False),
+                ("training", True),
+                ("prayers", False),
+                ("chrysostom-prayers", True),
+            ],
+        )
+        self.assertIn("self-development=False", selfdev_result.reply)
+        self.assertIn("training=True", training_result.reply)
+        self.assertIn("prayers=False", prayers_result.reply)
+        self.assertIn("chrysostom-prayers=True", chrysostom_result.reply)
+
+    def test_botfather_blocks_shortcut_reports_status(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+            calls = []
+            context.block_status = lambda block_id=None: calls.append(block_id) or "Блоки:\n- training: включен"
+
+            result = handle_command("/blocks", context)
+
+        self.assertEqual(calls, [None])
+        self.assertIn("training", result.reply)
+
     def test_help_command_uses_botfather_safe_names(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             context = self.make_context(Path(temp_dir) / "inbox.md")
@@ -462,6 +500,7 @@ class CommandTests(unittest.TestCase):
         self.assertIn("/stop_bot - остановить локальный notifier", result.reply)
         self.assertIn("/sd - перенести старт дня", result.reply)
         self.assertIn("/block_on - подключить блок", result.reply)
+        self.assertIn("/training_off - выключить тренировки", result.reply)
 
 
 if __name__ == "__main__":

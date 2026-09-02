@@ -38,6 +38,33 @@ class AudioCuePlayerTests(unittest.TestCase):
         self.assertTrue(played)
         self.assertEqual(calls, [("open", cue_path), ("sleep", 2), ("open", prayer_path)])
 
+    def test_wake_up_event_skips_morning_prayer_when_prayer_block_is_disabled(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            cue_path = root / "data" / "audio" / "rota-podem.mp3"
+            prayer_path = root / "data" / "audio" / "morning-prays.mp3"
+            cue_path.parent.mkdir(parents=True)
+            cue_path.write_bytes(b"cue")
+            prayer_path.write_bytes(b"prayer")
+            calls = []
+            player = AudioCuePlayer(
+                root=root,
+                opener=lambda path: calls.append(("open", path)),
+                sleeper=lambda seconds: calls.append(("sleep", seconds)),
+                morning_prayer_enabled=lambda: False,
+            )
+            event = ScheduleEvent(
+                event_id="wake-up",
+                title="Подъем",
+                message="Подъем",
+                when=datetime(2026, 8, 31, 4, 0),
+            )
+
+            played = player.play_for_event(event)
+
+        self.assertTrue(played)
+        self.assertEqual(calls, [("open", cue_path)])
+
     def test_missing_wake_up_cue_still_opens_morning_prayer(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

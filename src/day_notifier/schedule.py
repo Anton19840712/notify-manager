@@ -82,7 +82,11 @@ class Schedule:
             )
 
         for cycle in self._cycles:
-            if str(cycle.get("id", "")) in suppressed_cycles:
+            if str(cycle.get("id", "")) in suppressed_cycles or not _is_enabled_by_block(
+                cycle,
+                self._blocks,
+                self._block_overrides,
+            ):
                 continue
             start = datetime.combine(day, _parse_time(str(cycle["start_time"])))
             period = timedelta(minutes=int(cycle["period_minutes"]))
@@ -90,6 +94,8 @@ class Schedule:
             for cycle_index in range(1, count + 1):
                 cycle_start = start + period * (cycle_index - 1)
                 for item in cycle.get("items", []):
+                    if not _is_enabled_by_block(item, self._blocks, self._block_overrides):
+                        continue
                     when = cycle_start + timedelta(minutes=int(item.get("offset_minutes", 0)))
                     expanded.append(
                         ScheduleEvent(
@@ -103,6 +109,8 @@ class Schedule:
                     )
 
         for event in override.get("events", []):
+            if not _is_enabled_by_block(event, self._blocks, self._block_overrides):
+                continue
             expanded.append(
                 ScheduleEvent(
                     event_id=str(event["id"]),
@@ -157,7 +165,11 @@ class Schedule:
         expanded: list[ScheduleEvent] = []
         for rotation in self._rotating_events:
             rotation_id = str(rotation.get("id", ""))
-            if rotation_id in suppressed_rotations:
+            if rotation_id in suppressed_rotations or not _is_enabled_by_block(
+                rotation,
+                self._blocks,
+                self._block_overrides,
+            ):
                 continue
 
             start_day = date.fromisoformat(str(rotation["start_date"]))
@@ -171,6 +183,8 @@ class Schedule:
 
             current_offset = delta_days % period_days
             for item in rotation.get("items", []):
+                if not _is_enabled_by_block(item, self._blocks, self._block_overrides):
+                    continue
                 if int(item.get("offset_days", 0)) != current_offset:
                     continue
                 event_id = str(item["id"])
@@ -196,7 +210,11 @@ class Schedule:
         expanded: list[ScheduleEvent] = []
         for cycle in self._relative_cycles:
             cycle_id = str(cycle.get("id", ""))
-            if cycle_id in suppressed_cycles:
+            if cycle_id in suppressed_cycles or not _is_enabled_by_block(
+                cycle,
+                self._blocks,
+                self._block_overrides,
+            ):
                 continue
             if str(cycle.get("kind", "")) != "after_last_meal":
                 continue
@@ -207,6 +225,8 @@ class Schedule:
                 continue
             anchor = last_meal.when + timedelta(minutes=int(cycle.get("anchor_offset_minutes", 0)))
             for item in cycle.get("items", []):
+                if not _is_enabled_by_block(item, self._blocks, self._block_overrides):
+                    continue
                 when = anchor + timedelta(minutes=int(item.get("offset_minutes", 0)))
                 if when.date() != day:
                     continue

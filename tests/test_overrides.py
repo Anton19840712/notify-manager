@@ -211,6 +211,31 @@ class OverrideTests(unittest.TestCase):
             data["events"],
         )
 
+    def test_build_shifted_day_override_preserves_block_metadata(self):
+        schedule_data = {
+            "events": [
+                {"id": "wake-up", "time": "04:00", "title": "Подъем", "message": "Подъем"},
+                {
+                    "id": "target-engineering-article",
+                    "block": "self-development",
+                    "time": "05:00",
+                    "title": "Целевая инженерная статья",
+                    "message": "Учиться.",
+                },
+            ],
+            "cycles": [],
+        }
+
+        data = build_shifted_day_override(
+            schedule_data=schedule_data,
+            day=datetime(2026, 8, 31).date(),
+            start_time="10:00",
+        )
+
+        shifted_article = next(event for event in data["events"] if event["id"] == "target-engineering-article")
+        self.assertEqual(shifted_article["time"], "11:00")
+        self.assertEqual(shifted_article["block"], "self-development")
+
     def test_build_shifted_day_override_drops_events_after_midnight(self):
         schedule_data = json.loads((ROOT / "config" / "schedule.json").read_text(encoding="utf-8"))
 

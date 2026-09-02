@@ -194,14 +194,15 @@ def build_shifted_day_override(
         shifted_at = start_at + (original_at - base_start)
         if shifted_at.date() != day:
             continue
-        replacement_events.append(
-            {
-                "id": event_id,
-                "time": shifted_at.strftime("%H:%M"),
-                "title": str(event["title"]),
-                "message": str(event.get("message", event["title"])),
-            }
-        )
+        replacement_event = {
+            "id": event_id,
+            "time": shifted_at.strftime("%H:%M"),
+            "title": str(event["title"]),
+            "message": str(event.get("message", event["title"])),
+        }
+        if "block" in event:
+            replacement_event["block"] = str(event["block"])
+        replacement_events.append(replacement_event)
 
     replacement_events.extend(
         _event_to_override_dict(event)

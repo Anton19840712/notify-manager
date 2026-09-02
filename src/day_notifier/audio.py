@@ -18,6 +18,7 @@ WAKE_UP_CUE_DELAY_SECONDS = 2
 
 OpenAudioFile = Callable[[Path], None]
 Sleep = Callable[[int], None]
+IsMorningPrayerEnabled = Callable[[], bool]
 
 
 class AudioCuePlayer:
@@ -30,6 +31,7 @@ class AudioCuePlayer:
         cue_delay_seconds: int = WAKE_UP_CUE_DELAY_SECONDS,
         opener: OpenAudioFile | None = None,
         sleeper: Sleep | None = None,
+        morning_prayer_enabled: IsMorningPrayerEnabled | None = None,
     ) -> None:
         self.prayer_path = root / audio_path
         self.cue_path = root / cue_audio_path
@@ -37,6 +39,7 @@ class AudioCuePlayer:
         self.cue_delay_seconds = cue_delay_seconds
         self._opener = opener or _open_audio_file
         self._sleeper = sleeper or time.sleep
+        self._morning_prayer_enabled = morning_prayer_enabled or (lambda: True)
 
     def play_for_event(self, event: ScheduleEvent) -> bool:
         if event.event_id == BEDTIME_EVENT_ID:
@@ -44,6 +47,8 @@ class AudioCuePlayer:
         if event.event_id != WAKE_UP_EVENT_ID:
             return False
         played_cue = self._open_if_available(self.cue_path, "Wake-up cue audio")
+        if not self._morning_prayer_enabled():
+            return played_cue
         if played_cue and self.cue_delay_seconds > 0:
             self._sleeper(self.cue_delay_seconds)
         played_prayer = self._open_if_available(self.prayer_path, "Wake-up prayer audio")

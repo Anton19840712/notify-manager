@@ -365,6 +365,29 @@ class ConfigStateAppTests(unittest.TestCase):
         self.assertIn("chrysostom-prayers", result)
         self.assertIn("выключен", result)
 
+    def test_morning_prayer_audio_uses_runtime_prayer_block_state(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_project_files(root)
+            schedule_path = root / "config" / "schedule.json"
+            data = json.loads(schedule_path.read_text(encoding="utf-8"))
+            data["blocks"] = {
+                "prayers": {
+                    "title": "Молитвы / духовный блок",
+                    "enabled": True,
+                }
+            }
+            schedule_path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+            (root / "data" / "block_state.json").write_text(
+                json.dumps({"blocks": {"prayers": {"enabled": False}}}, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            app = NotifierApp(root)
+
+            enabled = app.is_morning_prayer_enabled()
+
+        self.assertFalse(enabled)
+
     def test_shift_day_writes_override_and_returns_summary(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

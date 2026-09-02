@@ -19,15 +19,14 @@ The bedtime event opens `data/audio/otboj.mp3` before sending the `Отбой` T
 
 ## Optional Blocks
 
-Optional practice blocks are stored in `config/schedule.json` under `blocks`. Events with a `block` field stay in the schedule file, but they are delivered only when that block is enabled.
+Optional practice blocks are stored in `config/schedule.json` under `blocks`. Events, rotations, and relative cycles with a `block` field stay in the schedule file, but they are delivered only when that block is enabled.
 
-The Saint John Chrysostom hourly prayer block is stored as `chrysostom-prayers` and disabled by default:
+- `self-development` - engineering article, microservices, monitoring, and day optimization.
+- `training` - strength rotation: thighs, calves, plus one base movement.
+- `prayers` - morning prayer and spiritual reset block.
+- `chrysostom-prayers` - 16 hourly Saint John Chrysostom prayers from `05:00` to `20:00`, disabled by default.
 
-```json
-"chrysostom-prayers": {
-  "enabled": false
-}
-```
+Hard anchors stay outside the block layer: wake-up, minimum cardio tail, food/water cycle, pre-meal reminders, work daily, lunch nap, batch-cooking, sleep countdown, and bedtime.
 
 Use `/block_on`, `/block_off`, and `/block_status` in Telegram to toggle runtime block state. Runtime overrides are saved to `data/block_state.json`, so the base schedule stays clean while the live setting survives notifier restarts.
 
@@ -155,8 +154,9 @@ This writes a local one-day override to `data/day_overrides/`. Override files ar
 - `/mi1`, `/mi2`, `/mi3`, `/mi4` - mark the selected meal as completed now.
 - `/otboy`, `/отбой`, or `отбой` - delete tracked bot-chat messages and leave one bedtime confirmation.
 - `/desktop on`, `/desktop off`, `/desktop status`, `/desktop_on`, `/desktop_off`, `/desktop_status` - control center-screen MsgBox reminders.
-- `/block_on`, `/block_on chrysostom-prayers`, `/block_off`, `/block_off chrysostom-prayers`, `/block_status` - connect, disconnect, or inspect optional practice blocks.
-- `подключить блок chrysostom-prayers`, `отключить блок chrysostom-prayers`, or `блоки` - plain-text aliases for block control.
+- `/block_on self-development`, `/block_off training`, `/block_status`, or `/blocks` - connect, disconnect, or inspect optional practice blocks.
+- `/selfdev_on`, `/selfdev_off`, `/training_on`, `/training_off`, `/prayers_on`, `/prayers_off`, `/chrysostom_on`, `/chrysostom_off` - quick BotFather-safe block toggles.
+- `подключить блок self-development`, `отключить блок training`, or `блоки` - plain-text aliases for block control.
 - `/stop_bot` - stop the local notifier process after sending a confirmation reply.
 - `/inbox text` - append a small task to `data/inbox.md`.
 
@@ -168,6 +168,7 @@ Telegram cleanup can only delete messages whose `message_id` was tracked after t
 
 The default schedule uses a 145-minute water/food cycle:
 
+- Self-development, strength training, and the morning prayer/spirit layer are toggleable blocks enabled by default.
 - Saint John Chrysostom prayers are kept as the optional `chrysostom-prayers` block and are disabled by default.
 - Work daily is fixed at `11:00`.
 - Strength runs at `11:15` as a 7-day rotation: every day keeps thighs and calves, then adds one base movement.

@@ -117,6 +117,133 @@ class ScheduleTests(unittest.TestCase):
 
         self.assertEqual([event.event_id for event in events], ["wake"])
 
+    def test_block_override_can_disable_override_event_block(self):
+        schedule = Schedule.from_dict(
+            {
+                "blocks": {
+                    "self-development": {
+                        "enabled": True,
+                    }
+                },
+                "events": [
+                    {"id": "wake", "time": "04:00", "title": "Подъем", "message": "Подъем"},
+                    {
+                        "id": "learn",
+                        "block": "self-development",
+                        "time": "05:00",
+                        "title": "Учеба",
+                        "message": "Учиться",
+                    },
+                ],
+                "cycles": [],
+            },
+            day_overrides={
+                "2026-08-30": {
+                    "suppress_events": ["learn"],
+                    "events": [
+                        {
+                            "id": "learn",
+                            "block": "self-development",
+                            "time": "10:00",
+                            "title": "Учеба",
+                            "message": "Сдвинутая учеба",
+                        }
+                    ],
+                }
+            },
+            block_overrides={"self-development": False},
+        )
+
+        events = schedule.events_for_date(date(2026, 8, 30))
+
+        self.assertEqual([event.event_id for event in events], ["wake"])
+
+    def test_rotating_event_block_can_be_disabled(self):
+        schedule = Schedule.from_dict(
+            {
+                "blocks": {
+                    "training": {
+                        "enabled": True,
+                    }
+                },
+                "events": [],
+                "cycles": [],
+                "rotating_events": [
+                    {
+                        "id": "strength-rotation",
+                        "block": "training",
+                        "start_date": "2026-09-01",
+                        "time": "11:15",
+                        "period_days": 7,
+                        "items": [
+                            {
+                                "offset_days": 0,
+                                "id": "strength-pullups",
+                                "title": "Силовой блок",
+                                "message": "Бедра + голень.",
+                            },
+                        ],
+                    }
+                ],
+            },
+            block_overrides={"training": False},
+        )
+
+        events = schedule.events_for_date(date(2026, 9, 1))
+
+        self.assertEqual(events, [])
+
+    def test_relative_cycle_block_can_be_disabled(self):
+        schedule = Schedule.from_dict(
+            {
+                "blocks": {
+                    "home-maintenance": {
+                        "enabled": True,
+                    }
+                },
+                "events": [],
+                "cycles": [
+                    {
+                        "id": "food-cycle",
+                        "start_time": "07:00",
+                        "period_minutes": 145,
+                        "count": 1,
+                        "items": [
+                            {
+                                "offset_minutes": 15,
+                                "id_template": "meal-{n}",
+                                "title_template": "{n} пп",
+                                "message_template": "{n} прием пищи",
+                            }
+                        ],
+                    }
+                ],
+                "relative_cycles": [
+                    {
+                        "id": "optional-cleanup",
+                        "block": "home-maintenance",
+                        "kind": "after_last_meal",
+                        "start_date": "2026-09-01",
+                        "period_days": 1,
+                        "anchor_offset_minutes": 10,
+                        "items": [
+                            {
+                                "offset_minutes": 0,
+                                "id": "cleanup",
+                                "title": "Уборка",
+                                "message": "Опциональная уборка.",
+                            },
+                        ],
+                    }
+                ],
+            },
+            block_overrides={"home-maintenance": False},
+        )
+
+        events = schedule.events_for_date(date(2026, 9, 1))
+
+        self.assertEqual([event.event_id for event in events], ["pre-meal-1", "meal-1"])
+
     def test_day_override_can_suppress_fixed_events_for_one_day(self):
         schedule = Schedule.from_dict(
             {
@@ -495,6 +622,55 @@ class ScheduleTests(unittest.TestCase):
         self.assertFalse(any(event.event_id.startswith("batch-cooking") for event in off_day))
         self.assertTrue(any(event.event_id == "batch-cooking" for event in next_cooking_day))
         self.assertFalse(any(event.title == "Контейнеры + кухня" for event in first_cooking_day))
+
+    def test_default_schedule_has_toggleable_self_development_training_and_prayer_blocks(self):
+        data = json.loads((ROOT / "config" / "schedule.json").read_text(encoding="utf-8"))
+
+        self.assertTrue(data["blocks"]["self-development"]["enabled"])
+        self.assertTrue(data["blocks"]["training"]["enabled"])
+        self.assertTrue(data["blocks"]["prayers"]["enabled"])
+        self.assertFalse(data["blocks"]["chrysostom-prayers"]["enabled"])
+        self.assertEqual(data["rotating_events"][0]["block"], "training")
+        self.assertNotIn("block", data["cycles"][0])
+        self.assertNotIn("block", data["relative_cycles"][0])
+
+    def test_default_schedule_can_disable_self_development_without_dropping_food(self):
+        data = json.loads((ROOT / "config" / "schedule.json").read_text(encoding="utf-8"))
+        schedule = Schedule.from_dict(data, block_overrides={"self-development": False})
+
+        events = schedule.events_for_date(date(2026, 8, 30))
+        event_ids = [event.event_id for event in events]
+
+        self.assertIn("wake-up", event_ids)
+        self.assertIn("meal-1", event_ids)
+        self.assertNotIn("day-optimization", event_ids)
+        self.assertNotIn("target-engineering-article", event_ids)
+        self.assertNotIn("microservices-reading", event_ids)
+        self.assertNotIn("monitoring-reading", event_ids)
+
+    def test_default_schedule_can_disable_training_without_dropping_food_or_work(self):
+        data = json.loads((ROOT / "config" / "schedule.json").read_text(encoding="utf-8"))
+        schedule = Schedule.from_dict(data, block_overrides={"training": False})
+
+        events = schedule.events_for_date(date(2026, 9, 1))
+        event_ids = [event.event_id for event in events]
+
+        self.assertIn("work-daily", event_ids)
+        self.assertIn("meal-3", event_ids)
+        self.assertNotIn("strength-pullups", event_ids)
+
+    def test_default_schedule_can_disable_prayers_without_dropping_wake_food_or_sleep(self):
+        data = json.loads((ROOT / "config" / "schedule.json").read_text(encoding="utf-8"))
+        schedule = Schedule.from_dict(data, block_overrides={"prayers": False})
+
+        events = schedule.events_for_date(date(2026, 8, 30))
+        event_ids = [event.event_id for event in events]
+
+        self.assertIn("wake-up", event_ids)
+        self.assertIn("meal-1", event_ids)
+        self.assertIn("bedtime", event_ids)
+        self.assertNotIn("morning-block", event_ids)
+        self.assertNotIn("spirit-reset", event_ids)
 
     def test_default_schedule_contains_strength_rotation_and_lunch_nap(self):
         schedule = Schedule.from_dict(

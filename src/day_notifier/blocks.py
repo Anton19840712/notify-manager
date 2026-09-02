@@ -88,6 +88,14 @@ def block_status(schedule_path: Path, state_path: Path, block_id: str | None = N
     return "\n".join(lines)
 
 
+def is_block_enabled(schedule_path: Path, state_path: Path, block_id: str) -> bool:
+    block_id = block_id.strip()
+    blocks = _read_schedule_blocks(schedule_path)
+    if block_id not in blocks:
+        raise ValueError(_unknown_block_message(block_id, blocks))
+    return _effective_enabled(blocks[block_id], load_block_overrides(state_path).get(block_id))
+
+
 def format_block_toggle_result(result: BlockToggleResult) -> str:
     state = "включен" if result.enabled else "выключен"
     if result.changed:
