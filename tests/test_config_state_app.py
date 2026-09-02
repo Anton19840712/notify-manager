@@ -188,6 +188,34 @@ class ConfigStateAppTests(unittest.TestCase):
         )
         self.assertIn("22:00 Отбой (до сна: 1 ч 15 мин)", text)
 
+    def test_format_startup_summary_hides_pre_meal_reminders(self):
+        schedule = Schedule.from_dict(
+            {
+                "events": [],
+                "cycles": [
+                    {
+                        "id": "food-cycle",
+                        "start_time": "07:00",
+                        "period_minutes": 145,
+                        "count": 1,
+                        "items": [
+                            {
+                                "offset_minutes": 15,
+                                "id_template": "meal-{n}",
+                                "title_template": "{n} пп",
+                                "message_template": "{n} прием пищи",
+                            }
+                        ],
+                    }
+                ],
+            }
+        )
+
+        text = format_startup_summary(schedule, datetime(2026, 8, 30, 7, 1))
+
+        self.assertIn("07:15 1 пп", text)
+        self.assertNotIn("10 минут до", text)
+
     def test_test_notification_sends_telegram_before_blocking_desktop_box(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             calls = []

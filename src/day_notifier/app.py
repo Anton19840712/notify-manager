@@ -145,7 +145,10 @@ class NotifierApp:
     def summary(self, now: datetime | None = None) -> str:
         current = now or datetime.now()
         lines = ["Ближайшие события:"]
-        lines.extend(format_event_line(event, current, include_date=True) for event in self.schedule.upcoming(current, 10))
+        lines.extend(
+            format_event_line(event, current, include_date=True)
+            for event in self.schedule.upcoming(current, 10, include_pre_meal=False)
+        )
         return "\n".join(lines)
 
     def today(self, now: datetime | None = None) -> str:
@@ -277,7 +280,7 @@ class NotifierApp:
 
 
 def format_startup_summary(schedule: Schedule, now: datetime, limit: int = 10) -> str:
-    events = schedule.remaining_today(now, limit=limit)
+    events = schedule.remaining_today(now, limit=limit, include_pre_meal=False)
     if not events:
         return "Сегодня больше нет событий."
     lines = ["Сегодня осталось:"]

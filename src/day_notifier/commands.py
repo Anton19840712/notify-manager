@@ -122,7 +122,7 @@ def handle_command(text: str, context: CommandContext) -> CommandResult:
         return CommandResult(reply="Останавливаю notify-manager. Запусти снова через AHK или PowerShell.")
 
     if command == "/next":
-        event = context.schedule.next_event(context.now())
+        event = context.schedule.next_event(context.now(), include_pre_meal=False)
         return CommandResult(reply=_format_event("Следующее", event, context.now()))
 
     if command == "/summary":
@@ -185,7 +185,7 @@ def handle_command(text: str, context: CommandContext) -> CommandResult:
 
 def _summary(context: CommandContext) -> str:
     current = context.now()
-    upcoming = context.schedule.upcoming(current, limit=5)
+    upcoming = context.schedule.upcoming(current, limit=5, include_pre_meal=False)
     lines = ["Ближайшее:"]
     lines.extend(format_event_line(event, current) for event in upcoming)
 
@@ -200,7 +200,7 @@ def _summary(context: CommandContext) -> str:
 
 def _today(context: CommandContext) -> str:
     current = context.now()
-    events = context.schedule.remaining_today(current, limit=10)
+    events = context.schedule.remaining_today(current, limit=10, include_pre_meal=False)
     if not events:
         return "Сегодня больше нет событий."
     lines = ["Сегодня:"]

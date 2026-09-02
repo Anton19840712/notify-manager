@@ -89,6 +89,18 @@ class CommandTests(unittest.TestCase):
         self.assertIn("07:00", result.reply)
         self.assertIn("1 пв", result.reply)
 
+    def test_next_command_hides_pre_meal_reminder(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+            context.schedule = self.make_food_schedule()
+            context.now = lambda: datetime(2026, 8, 30, 7, 1)
+
+            result = handle_command("/next", context)
+
+        self.assertIn("07:15", result.reply)
+        self.assertIn("1 пп", result.reply)
+        self.assertNotIn("10 минут до", result.reply)
+
     def test_inbox_command_appends_text(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             inbox_path = Path(temp_dir) / "inbox.md"
@@ -129,6 +141,18 @@ class CommandTests(unittest.TestCase):
         self.assertIn("Сегодня", result.reply)
         self.assertIn("07:00", result.reply)
         self.assertIn("1 пв", result.reply)
+
+    def test_today_command_hides_pre_meal_reminders(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+            context.schedule = self.make_food_schedule()
+            context.now = lambda: datetime(2026, 8, 30, 7, 1)
+
+            result = handle_command("/today", context)
+
+        self.assertIn("07:15", result.reply)
+        self.assertIn("1 пп", result.reply)
+        self.assertNotIn("10 минут до", result.reply)
 
     def test_desktop_command_can_disable_notifications(self):
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -795,6 +795,33 @@ class ScheduleTests(unittest.TestCase):
 
         self.assertEqual(event.event_id, "sleep")
 
+    def test_next_event_can_skip_pre_meal_reminders(self):
+        schedule = Schedule.from_dict(
+            {
+                "events": [],
+                "cycles": [
+                    {
+                        "id": "food-cycle",
+                        "start_time": "07:00",
+                        "period_minutes": 145,
+                        "count": 1,
+                        "items": [
+                            {
+                                "offset_minutes": 15,
+                                "id_template": "meal-{n}",
+                                "title_template": "{n} пп",
+                                "message_template": "{n} прием пищи",
+                            }
+                        ],
+                    }
+                ],
+            }
+        )
+
+        event = schedule.next_event(datetime(2026, 8, 30, 7, 1), include_pre_meal=False)
+
+        self.assertEqual(event.event_id, "meal-1")
+
     def test_remaining_today_excludes_past_events_and_tomorrow(self):
         schedule = Schedule.from_dict(
             {
@@ -809,6 +836,36 @@ class ScheduleTests(unittest.TestCase):
         events = schedule.remaining_today(datetime(2026, 8, 30, 21, 30))
 
         self.assertEqual([event.event_id for event in events], ["bed"])
+
+    def test_remaining_today_can_skip_pre_meal_reminders(self):
+        schedule = Schedule.from_dict(
+            {
+                "events": [],
+                "cycles": [
+                    {
+                        "id": "food-cycle",
+                        "start_time": "07:00",
+                        "period_minutes": 145,
+                        "count": 1,
+                        "items": [
+                            {
+                                "offset_minutes": 15,
+                                "id_template": "meal-{n}",
+                                "title_template": "{n} пп",
+                                "message_template": "{n} прием пищи",
+                            }
+                        ],
+                    }
+                ],
+            }
+        )
+
+        events = schedule.remaining_today(
+            datetime(2026, 8, 30, 7, 1),
+            include_pre_meal=False,
+        )
+
+        self.assertEqual([event.event_id for event in events], ["meal-1"])
 
 
 if __name__ == "__main__":

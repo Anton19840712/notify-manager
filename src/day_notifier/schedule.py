@@ -11,6 +11,7 @@ from day_notifier.blocks import load_block_overrides
 
 MEAL_TITLE_PATTERN = re.compile(r"^\d+\s*пп$", re.IGNORECASE)
 MEAL_EVENT_ID_PATTERN = re.compile(r"^(?:override-)?meal-\d+$", re.IGNORECASE)
+PRE_MEAL_EVENT_ID_PATTERN = re.compile(r"^pre-(?:override-)?meal-\d+$", re.IGNORECASE)
 PRE_MEAL_OFFSET_MINUTES = 10
 
 
@@ -240,24 +241,55 @@ class Schedule:
                 )
         return expanded
 
-    def next_event(self, reference: datetime) -> ScheduleEvent:
-        today_events = [event for event in self.events_for_date(reference.date()) if event.when > reference]
+    def next_event(self, reference: datetime, include_pre_meal: bool = True) -> ScheduleEvent:
+        today_events = [
+            event
+            for event in self.events_for_date(reference.date())
+            if event.when > reference and (include_pre_meal or not is_pre_meal_event(event))
+        ]
         if today_events:
             return today_events[0]
 
         tomorrow = reference.date() + timedelta(days=1)
-        return self.events_for_date(tomorrow)[0]
+        tomorrow_events = [
+            event
+            for event in self.events_for_date(tomorrow)
+            if include_pre_meal or not is_pre_meal_event(event)
+        ]
+        return tomorrow_events[0]
 
-    def remaining_today(self, reference: datetime, limit: int | None = None) -> list[ScheduleEvent]:
-        events = [event for event in self.events_for_date(reference.date()) if event.when > reference]
+    def remaining_today(
+        self,
+        reference: datetime,
+        limit: int | None = None,
+        include_pre_meal: bool = True,
+    ) -> list[ScheduleEvent]:
+        events = [
+            event
+            for event in self.events_for_date(reference.date())
+            if event.when > reference and (include_pre_meal or not is_pre_meal_event(event))
+        ]
         if limit is None:
             return events
         return events[:limit]
 
-    def upcoming(self, reference: datetime, limit: int = 5) -> list[ScheduleEvent]:
-        events = [event for event in self.events_for_date(reference.date()) if event.when > reference]
+    def upcoming(
+        self,
+        reference: datetime,
+        limit: int = 5,
+        include_pre_meal: bool = True,
+    ) -> list[ScheduleEvent]:
+        events = [
+            event
+            for event in self.events_for_date(reference.date())
+            if event.when > reference and (include_pre_meal or not is_pre_meal_event(event))
+        ]
         if len(events) < limit:
-            events.extend(self.events_for_date(reference.date() + timedelta(days=1)))
+            events.extend(
+                event
+                for event in self.events_for_date(reference.date() + timedelta(days=1))
+                if include_pre_meal or not is_pre_meal_event(event)
+            )
         return events[:limit]
 
 
@@ -328,3 +360,7 @@ def _last_meal_event(events: list[ScheduleEvent]) -> ScheduleEvent | None:
 
 def _is_meal_event(event: ScheduleEvent) -> bool:
     return bool(MEAL_TITLE_PATTERN.match(event.title.strip()) or MEAL_EVENT_ID_PATTERN.match(event.event_id))
+
+
+def is_pre_meal_event(event: ScheduleEvent) -> bool:
+    return bool(PRE_MEAL_EVENT_ID_PATTERN.match(event.event_id))
