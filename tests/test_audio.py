@@ -3,15 +3,51 @@ import tempfile
 import unittest
 from datetime import datetime
 from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
+import day_notifier.audio as audio
 from day_notifier.audio import AudioCuePlayer
 from day_notifier.schedule import ScheduleEvent
 
 
 class AudioCuePlayerTests(unittest.TestCase):
+    def test_default_audio_opener_starts_hidden_self_closing_windows_player(self):
+        calls = []
+        devnull = object()
+        fake_subprocess = SimpleNamespace(
+            CREATE_NO_WINDOW=0x08000000,
+            DEVNULL=devnull,
+            Popen=lambda args, **kwargs: calls.append((args, kwargs)),
+        )
+
+        with mock.patch.object(audio.os, "name", "nt"), mock.patch.object(
+            audio.os,
+            "startfile",
+            side_effect=AssertionError("os.startfile leaves the external player open"),
+            create=True,
+        ), mock.patch.object(audio, "subprocess", fake_subprocess, create=True):
+            audio._open_audio_file(Path("C:/audio/meal-1.mp3"))
+
+        self.assertEqual(len(calls), 1)
+        args, kwargs = calls[0]
+        self.assertEqual(args[0], "powershell.exe")
+        self.assertIn("-WindowStyle", args)
+        self.assertIn("Hidden", args)
+        self.assertIn("-STA", args)
+        self.assertEqual(kwargs["stdin"], devnull)
+        self.assertEqual(kwargs["stdout"], devnull)
+        self.assertEqual(kwargs["stderr"], devnull)
+        self.assertEqual(kwargs["creationflags"], fake_subprocess.CREATE_NO_WINDOW)
+        script = args[-1]
+        self.assertIn("System.Windows.Media.MediaPlayer", script)
+        self.assertIn("file:///C:/audio/meal-1.mp3", script)
+        self.assertIn("$player.Stop()", script)
+        self.assertIn("$player.Close()", script)
+
     def test_wake_up_event_opens_cue_then_morning_prayer_after_delay(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
