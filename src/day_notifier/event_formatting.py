@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from datetime import datetime
 
+from day_notifier.event_kinds import is_bedtime_event
 from day_notifier.schedule import ScheduleEvent
 
 
@@ -42,7 +43,7 @@ def _countdown_label(event: ScheduleEvent) -> str | None:
     title = event.title.strip().lower()
     if MEAL_TITLE_PATTERN.match(event.title.strip()) or MEAL_EVENT_ID_PATTERN.match(event_id):
         return "до приема пищи"
-    if event_id == "bedtime" or title == "отбой":
+    if is_bedtime_event(event):
         return "до сна"
     if event_id == "batch-cooking" or title.startswith("batch-cooking"):
         return "до batch-cooking"

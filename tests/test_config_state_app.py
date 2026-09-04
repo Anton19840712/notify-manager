@@ -475,6 +475,36 @@ class ConfigStateAppTests(unittest.TestCase):
 
         self.assertEqual(due[0].when, datetime(2026, 9, 4, 7, 40))
 
+    def test_desktop_snooze_action_on_sleep_countdown_snoozes_bedtime(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_project_files(root)
+            app = NotifierApp(root)
+            action = DesktopAction(
+                action_id="sleep-countdown-snooze",
+                action="snooze_10",
+                event_id="sleep-countdown-1",
+                title="1 минута до сна",
+                message="Отбой почти сейчас.",
+                when=datetime(2026, 9, 4, 21, 59),
+            )
+            bedtime = ScheduleEvent(
+                event_id="bedtime",
+                title="Отбой",
+                message="Сон",
+                when=datetime(2026, 9, 4, 22, 0),
+            )
+
+            app._apply_desktop_action(action, datetime(2026, 9, 4, 21, 59, 20))
+            due = app.state.due_snoozes(datetime(2026, 9, 4, 22, 10))
+
+        self.assertTrue(app.state.has_seen(bedtime))
+        self.assertTrue(app.state.has_seen(action.to_event()))
+        self.assertEqual(len(due), 1)
+        self.assertEqual(due[0].event_id, "bedtime-snooze")
+        self.assertEqual(due[0].title, "Отбой +10 мин")
+        self.assertEqual(due[0].when, datetime(2026, 9, 4, 22, 10))
+
     def test_desktop_done_action_for_meal_recalculates_remaining_food(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -572,6 +602,28 @@ class ConfigStateAppTests(unittest.TestCase):
         self.assertEqual(calls[1][0], "telegram")
         self.assertIn("22:00 - Отбой", calls[1][1])
         self.assertEqual([item["direction"] for item in app.state.telegram_messages], ["outgoing"])
+
+    def test_bedtime_snooze_notification_cleans_chat_before_sending_message(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            calls = []
+            app = NotifierApp.__new__(NotifierApp)
+            app.telegram = RecordingTelegram(calls)
+            app.desktop = RecordingDesktop(calls)
+            app.audio = NoopAudio()
+            app.state = JsonStateStore(Path(temp_dir) / "state.json")
+            app.state.track_telegram_message(10, "outgoing", datetime(2026, 9, 3, 21, 0))
+            event = ScheduleEvent(
+                event_id="bedtime-snooze",
+                title="Отбой +10 мин",
+                message="Сон - топливо завтрашнего времени.",
+                when=datetime(2026, 9, 3, 22, 10),
+            )
+
+            app.notify(event, now=datetime(2026, 9, 3, 22, 10))
+
+        self.assertEqual(calls[0], ("delete_messages", [10]))
+        self.assertEqual(calls[1][0], "telegram")
+        self.assertIn("22:10 - Отбой +10 мин", calls[1][1])
 
     def test_process_telegram_records_incoming_and_reply_message_ids(self):
         with tempfile.TemporaryDirectory() as temp_dir:

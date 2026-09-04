@@ -255,6 +255,26 @@ class AudioCuePlayerTests(unittest.TestCase):
         self.assertTrue(played)
         self.assertEqual(calls, [("open", bedtime_path)])
 
+    def test_bedtime_snooze_event_opens_bedtime_audio(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            bedtime_path = root / "data" / "audio" / "otboj.mp3"
+            bedtime_path.parent.mkdir(parents=True)
+            bedtime_path.write_bytes(b"bedtime")
+            calls = []
+            player = AudioCuePlayer(root=root, opener=lambda path: calls.append(("open", path)))
+            event = ScheduleEvent(
+                event_id="bedtime-snooze",
+                title="Отбой +10 мин",
+                message="Сон",
+                when=datetime(2026, 9, 1, 22, 10),
+            )
+
+            played = player.play_for_event(event)
+
+        self.assertTrue(played)
+        self.assertEqual(calls, [("open", bedtime_path)])
+
     def test_missing_wake_up_audio_does_not_raise(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             player = AudioCuePlayer(root=Path(temp_dir), opener=lambda path: None)

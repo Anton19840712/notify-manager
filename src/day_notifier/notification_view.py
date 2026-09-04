@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from day_notifier.event_kinds import is_bedtime_event
 from day_notifier.event_formatting import format_notification_text
 from day_notifier.schedule import ScheduleEvent
 
@@ -84,7 +85,7 @@ def _countdown_label(event: ScheduleEvent) -> str | None:
     title = event.title.strip().lower()
     if _is_meal_event(event):
         return "до приема пищи"
-    if event_id == "bedtime" or title == "отбой":
+    if is_bedtime_event(event):
         return "до сна"
     if event_id == "batch-cooking" or title.startswith("batch-cooking"):
         return "до batch-cooking"
@@ -94,7 +95,7 @@ def _countdown_label(event: ScheduleEvent) -> str | None:
 def _importance(event: ScheduleEvent) -> str:
     event_id = event.event_id.lower()
     title = event.title.strip().lower()
-    if event_id in {"wake-up", "bedtime"} or title in {"подъем", "отбой"} or _is_meal_event(event):
+    if event_id == "wake-up" or title == "подъем" or is_bedtime_event(event) or _is_meal_event(event):
         return "critical"
     if event_id.startswith("full-body-circuit") or event_id == "batch-cooking" or "круговая" in title:
         return "anchor"

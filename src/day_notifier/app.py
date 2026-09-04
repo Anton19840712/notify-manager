@@ -6,7 +6,7 @@ import logging
 import re
 import time
 import zipfile
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from xml.etree import ElementTree
 
@@ -22,6 +22,7 @@ from day_notifier.commands import CommandContext, handle_command
 from day_notifier.config import Settings, load_settings, set_desktop_enabled, set_desktop_mode as write_desktop_mode
 from day_notifier.desktop import DesktopNotifier
 from day_notifier.desktop_actions import DesktopAction, consume_desktop_actions
+from day_notifier.event_kinds import is_base_bedtime_event, is_bedtime_event, is_sleep_countdown_event
 from day_notifier.event_formatting import format_event_line, format_notification_text
 from day_notifier.meal_voice import format_meal_voice_status, set_meal_voice_profile
 from day_notifier.notification_view import build_notification_view
@@ -123,7 +124,7 @@ class NotifierApp:
         telegram_text = format_notification_text(event, current)
         desktop_view = build_notification_view(event, current)
         self.audio.play_for_event(event)
-        if _is_bedtime_event(event):
+        if is_bedtime_event(event):
             logging.info(self.cleanup_telegram_chat())
         if self.telegram is not None:
             try:
@@ -394,11 +395,26 @@ class NotifierApp:
             self.state.mark_done(event, now)
             return
         if action.action == "snooze_10":
-            anchor = event if event.when > now else ScheduleEvent(event.event_id, event.title, event.message, now)
+            target = self._snooze_target_event(event, now)
+            anchor = target if target.when > now else ScheduleEvent(target.event_id, target.title, target.message, now)
             self.state.add_snooze(anchor, 10)
+            if target.key != event.key:
+                self.state.mark_skipped(target)
+                self.state.mark_skipped(event)
             return
         if action.action == "skip":
             self.state.mark_skipped(event)
+
+    def _snooze_target_event(self, event: ScheduleEvent, now: datetime) -> ScheduleEvent:
+        if not is_sleep_countdown_event(event):
+            return event
+        return self._bedtime_event_for_date(now.date()) or event
+
+    def _bedtime_event_for_date(self, day: date) -> ScheduleEvent | None:
+        return next(
+            (event for event in self.schedule.events_for_date(day) if is_base_bedtime_event(event)),
+            None,
+        )
 
 
 def format_startup_summary(schedule: Schedule, now: datetime, limit: int = 10) -> str:
@@ -504,10 +520,6 @@ def _parse_today_anchor(value: str) -> datetime:
     hour, minute = value.split(":", 1)
     current = datetime.now()
     return current.replace(hour=int(hour), minute=int(minute), second=0, microsecond=0)
-
-
-def _is_bedtime_event(event: ScheduleEvent) -> bool:
-    return event.event_id.lower() == "bedtime" or event.title.strip().lower() == "отбой"
 
 
 def _meal_number(event: ScheduleEvent) -> int | None:

@@ -56,6 +56,20 @@ class NotificationViewTests(unittest.TestCase):
         self.assertEqual(view.status, "через: 10 мин")
         self.assertEqual([action.action for action in view.actions], ["done", "snooze_10", "skip"])
 
+    def test_bedtime_snooze_view_keeps_sleep_countdown(self):
+        event = ScheduleEvent(
+            event_id="bedtime-snooze",
+            title="Отбой +10 мин",
+            message="Сон.",
+            when=datetime(2026, 9, 4, 22, 10),
+        )
+
+        view = build_notification_view(event, datetime(2026, 9, 4, 22, 0))
+
+        self.assertEqual(view.importance, "critical")
+        self.assertEqual(view.status, "до сна: 10 мин")
+        self.assertIn("22:10 - Отбой +10 мин (до сна: 10 мин)", view.body)
+
 
 if __name__ == "__main__":
     unittest.main()

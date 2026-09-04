@@ -7,12 +7,12 @@ import time
 from pathlib import Path
 from typing import Callable
 
+from day_notifier.event_kinds import is_bedtime_event
 from day_notifier.meal_voice import load_active_meal_voice_profile
 from day_notifier.schedule import ScheduleEvent
 
 
 WAKE_UP_EVENT_ID = "wake-up"
-BEDTIME_EVENT_ID = "bedtime"
 WAKE_UP_CUE_AUDIO_PATH = Path("data") / "audio" / "rota-podem.mp3"
 MORNING_PRAYER_AUDIO_PATH = Path("data") / "audio" / "morning-prays.mp3"
 BEDTIME_AUDIO_PATH = Path("data") / "audio" / "otboj.mp3"
@@ -53,7 +53,7 @@ class AudioCuePlayer:
         self._morning_prayer_enabled = morning_prayer_enabled or (lambda: True)
 
     def play_for_event(self, event: ScheduleEvent) -> bool:
-        if event.event_id == BEDTIME_EVENT_ID:
+        if is_bedtime_event(event):
             return self._open_if_available(self.bedtime_path, "Bedtime audio")
         meal_number = _meal_number(event)
         if meal_number is not None:
