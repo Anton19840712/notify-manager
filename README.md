@@ -15,7 +15,7 @@ Local Windows notifier for day practices. It reads `config/schedule.json`, shows
 
 The wake-up event first opens `data/audio/rota-podem.mp3`, waits 2 seconds, then opens `data/audio/morning-prays.mp3`. If either file is missing or Windows cannot open it, the notifier logs the problem and still sends the regular Telegram and desktop reminders.
 
-The bedtime event opens `data/audio/otboj.mp3` before sending the `Отбой` Telegram and desktop reminders.
+The bedtime event opens `data/audio/otboj.mp3`, clears tracked Telegram bot-chat messages, and then sends the `Отбой` Telegram and desktop reminders.
 
 Meal events open numbered assistant voice cues before Telegram and desktop reminders. The active cue set is selected by `/mv`; default is `male_commander`.
 
@@ -174,7 +174,7 @@ This writes a local one-day override to `data/day_overrides/`. Override files ar
 - `/mi1`, `/mi2`, `/mi3`, `/mi4` - mark the selected meal as completed now.
 - `/mv` - show the active meal voice and all profile ids.
 - `/mv 3` or `/mv female_sonia` - switch the meal voice profile without restarting notify-manager.
-- `/otboy`, `/отбой`, or `отбой` - delete tracked bot-chat messages and leave one bedtime confirmation.
+- `/otboy`, `/отбой`, or `отбой` - delete tracked bot-chat messages and leave one bedtime confirmation. The scheduled `Отбой` event also clears tracked Telegram messages before sending its own reminder.
 - `/desktop on`, `/desktop off`, `/desktop status`, `/desktop_on`, `/desktop_off`, `/desktop_status` - control center-screen MsgBox reminders.
 - `/block_on self-development`, `/block_off training`, `/block_status`, or `/blocks` - connect, disconnect, or inspect optional practice blocks.
 - `/selfdev_on`, `/selfdev_off`, `/training_on`, `/training_off`, `/prayers_on`, `/prayers_off`, `/chrysostom_on`, `/chrysostom_off` - quick BotFather-safe block toggles.

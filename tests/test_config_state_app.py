@@ -391,6 +391,30 @@ class ConfigStateAppTests(unittest.TestCase):
 
         self.assertEqual(app.state.telegram_messages[0]["direction"], "outgoing")
 
+    def test_bedtime_notification_cleans_chat_before_sending_bedtime_message(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            calls = []
+            app = NotifierApp.__new__(NotifierApp)
+            app.telegram = RecordingTelegram(calls)
+            app.desktop = RecordingDesktop(calls)
+            app.audio = NoopAudio()
+            app.state = JsonStateStore(Path(temp_dir) / "state.json")
+            app.state.track_telegram_message(10, "outgoing", datetime(2026, 9, 3, 21, 0))
+            app.state.track_telegram_message(11, "incoming", datetime(2026, 9, 3, 21, 59))
+            event = ScheduleEvent(
+                event_id="bedtime",
+                title="Отбой",
+                message="Сон - топливо завтрашнего времени.",
+                when=datetime(2026, 9, 3, 22, 0),
+            )
+
+            app.notify(event, now=datetime(2026, 9, 3, 22, 0))
+
+        self.assertEqual(calls[0], ("delete_messages", [10, 11]))
+        self.assertEqual(calls[1][0], "telegram")
+        self.assertIn("22:00 - Отбой", calls[1][1])
+        self.assertEqual([item["direction"] for item in app.state.telegram_messages], ["outgoing"])
+
     def test_process_telegram_records_incoming_and_reply_message_ids(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

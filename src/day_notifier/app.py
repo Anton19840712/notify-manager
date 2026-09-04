@@ -107,6 +107,8 @@ class NotifierApp:
         telegram_text = format_notification_text(event, current)
         desktop_text = format_notification_text(event, current, include_current_time=True)
         self.audio.play_for_event(event)
+        if _is_bedtime_event(event):
+            logging.info(self.cleanup_telegram_chat())
         if self.telegram is not None:
             try:
                 self.send_telegram_message(telegram_text)
@@ -414,3 +416,7 @@ def _parse_today_anchor(value: str) -> datetime:
     hour, minute = value.split(":", 1)
     current = datetime.now()
     return current.replace(hour=int(hour), minute=int(minute), second=0, microsecond=0)
+
+
+def _is_bedtime_event(event: ScheduleEvent) -> bool:
+    return event.event_id.lower() == "bedtime" or event.title.strip().lower() == "отбой"

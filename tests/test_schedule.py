@@ -810,6 +810,23 @@ class ScheduleTests(unittest.TestCase):
         self.assertIn("обычный bike", first_training.message)
         self.assertIn("душ", first_training.message)
 
+    def test_default_training_messages_put_exercises_on_separate_lines(self):
+        schedule = Schedule.from_dict(
+            json.loads((ROOT / "config" / "schedule.json").read_text(encoding="utf-8"))
+        )
+
+        training_events = [
+            event
+            for day in [date(2026, 9, 1), date(2026, 9, 2), date(2026, 9, 3), date(2026, 9, 4)]
+            for event in schedule.events_for_date(day)
+            if event.event_id.startswith("full-body-circuit-")
+        ]
+
+        self.assertEqual(len(training_events), 4)
+        for event in training_events:
+            for index in range(1, 11):
+                self.assertRegex(event.message, rf"(^|\n){index}\) ")
+
     def test_expands_water_and_food_cycle(self):
         schedule = Schedule.from_dict(
             {
