@@ -13,6 +13,13 @@ from day_notifier.desktop_card_themes import DEFAULT_DESKTOP_CARD_THEME, Desktop
 
 
 CURRENT_TIME_PATTERN = re.compile(r"Сейчас:\s*(\d{2}:\d{2})")
+CLASSIC_HEADER_SIDE_WIDTH = 190
+CLASSIC_HEADER_GAP = 18
+DENSE_HEADER_OUTER_PADDING = 52
+DENSE_HEADER_COLUMN_GAP = 32
+STRIP_TITLE_WIDTH = 250
+STRIP_TIME_WIDTH = 210
+STRIP_COUNTDOWN_WIDTH = 130
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -96,17 +103,19 @@ class _CardModel:
 def _render_classic_header(tk, card, model: _CardModel, theme: DesktopCardTheme) -> None:
     header = tk.Frame(card, bg=theme.panel_bg)
     header.grid(row=0, column=0, sticky="ew", padx=28, pady=(24, 0))
-    header.columnconfigure(0, weight=1)
-    header.columnconfigure(1, weight=1)
+    header.columnconfigure(0, weight=1, minsize=0)
+    header.columnconfigure(1, weight=0, minsize=CLASSIC_HEADER_SIDE_WIDTH)
 
     tk.Label(
         header,
         text=model.title,
         bg=theme.panel_bg,
         fg=theme.title_fg,
-        font=("Segoe UI", 32, "bold"),
+        font=("Segoe UI", _title_font_size(model.title, 32, 24), "bold"),
         anchor="w",
-    ).grid(row=0, column=0, sticky="w")
+        justify="left",
+        wraplength=_classic_title_wraplength(theme),
+    ).grid(row=0, column=0, sticky="ew", padx=(0, CLASSIC_HEADER_GAP))
     tk.Label(
         header,
         text=model.target_time,
@@ -114,7 +123,7 @@ def _render_classic_header(tk, card, model: _CardModel, theme: DesktopCardTheme)
         fg=theme.time_fg,
         font=("Segoe UI", 32, "bold"),
         anchor="e",
-    ).grid(row=0, column=1, sticky="e")
+    ).grid(row=0, column=1, sticky="ne")
     tk.Label(
         header,
         text=f"Сейчас: {model.current_time}",
@@ -141,9 +150,19 @@ def _render_dense_header(tk, card, model: _CardModel, theme: DesktopCardTheme) -
     for column in range(3):
         header.columnconfigure(column, weight=1)
 
-    _metric(tk, header, "Событие", model.title, theme.title_fg, theme, 0)
-    _metric(tk, header, "Время", model.target_time, theme.time_fg, theme, 1)
-    _metric(tk, header, model.status_label or "Осталось", model.countdown or "сейчас", theme.countdown_fg, theme, 2)
+    metric_wraplength = _dense_metric_wraplength(theme)
+    _metric(tk, header, "Событие", model.title, theme.title_fg, theme, 0, metric_wraplength)
+    _metric(tk, header, "Время", model.target_time, theme.time_fg, theme, 1, metric_wraplength)
+    _metric(
+        tk,
+        header,
+        model.status_label or "Осталось",
+        model.countdown or "сейчас",
+        theme.countdown_fg,
+        theme,
+        2,
+        metric_wraplength,
+    )
     tk.Label(
         header,
         text=f"Сейчас: {model.current_time}",
@@ -158,18 +177,20 @@ def _render_dense_header(tk, card, model: _CardModel, theme: DesktopCardTheme) -
 def _render_strip_header(tk, card, model: _CardModel, theme: DesktopCardTheme) -> None:
     header = tk.Frame(card, bg=theme.panel_bg)
     header.grid(row=0, column=0, sticky="ew", padx=22, pady=(20, 0))
-    header.columnconfigure(0, weight=0)
-    header.columnconfigure(1, weight=1)
-    header.columnconfigure(2, weight=0)
+    header.columnconfigure(0, weight=1, minsize=STRIP_TITLE_WIDTH)
+    header.columnconfigure(1, weight=0, minsize=STRIP_TIME_WIDTH)
+    header.columnconfigure(2, weight=0, minsize=STRIP_COUNTDOWN_WIDTH)
 
     tk.Label(
         header,
         text=model.title,
         bg=theme.panel_bg,
         fg=theme.title_fg,
-        font=("Segoe UI", 28, "bold"),
+        font=("Segoe UI", _title_font_size(model.title, 28, 22), "bold"),
         anchor="w",
-    ).grid(row=0, column=0, sticky="w")
+        justify="left",
+        wraplength=STRIP_TITLE_WIDTH,
+    ).grid(row=0, column=0, sticky="ew", padx=(0, 18))
     tk.Label(
         header,
         text=f"Сейчас: {model.current_time}  ->  {model.target_time}",
@@ -177,7 +198,9 @@ def _render_strip_header(tk, card, model: _CardModel, theme: DesktopCardTheme) -
         fg=theme.time_fg,
         font=("Segoe UI", 18),
         anchor="w",
-    ).grid(row=0, column=1, sticky="w", padx=(24, 0))
+        justify="left",
+        wraplength=STRIP_TIME_WIDTH,
+    ).grid(row=0, column=1, sticky="ew", padx=(0, 18))
     tk.Label(
         header,
         text=model.countdown or "сейчас",
@@ -185,7 +208,9 @@ def _render_strip_header(tk, card, model: _CardModel, theme: DesktopCardTheme) -
         fg=theme.countdown_fg,
         font=("Segoe UI", 34, "bold"),
         anchor="e",
-    ).grid(row=0, column=2, sticky="e", padx=(18, 0))
+        justify="right",
+        wraplength=STRIP_COUNTDOWN_WIDTH,
+    ).grid(row=0, column=2, sticky="e")
     tk.Label(
         header,
         text=model.status_label,
@@ -262,7 +287,16 @@ def _render_buttons(tk, card, payload: dict, root, theme: DesktopCardTheme) -> N
         button.grid(row=0, column=index, sticky="ew", padx=(0 if index == 0 else 8, 0), ipady=11)
 
 
-def _metric(tk, parent, label: str, value: str, value_color: str, theme: DesktopCardTheme, column: int) -> None:
+def _metric(
+    tk,
+    parent,
+    label: str,
+    value: str,
+    value_color: str,
+    theme: DesktopCardTheme,
+    column: int,
+    wraplength: int,
+) -> None:
     frame = tk.Frame(parent, bg=theme.panel_bg)
     frame.grid(row=0, column=column, sticky="ew", padx=(0 if column == 0 else 16, 0))
     tk.Label(
@@ -278,9 +312,28 @@ def _metric(tk, parent, label: str, value: str, value_color: str, theme: Desktop
         text=value,
         bg=theme.panel_bg,
         fg=value_color,
-        font=("Segoe UI", 28, "bold"),
+        font=("Segoe UI", _title_font_size(value, 28, 22), "bold"),
         anchor="w",
-    ).pack(anchor="w", pady=(2, 0))
+        justify="left",
+        wraplength=wraplength,
+    ).pack(anchor="w", fill="x", pady=(2, 0))
+
+
+def _classic_title_wraplength(theme: DesktopCardTheme) -> int:
+    return max(220, theme.width - 56 - CLASSIC_HEADER_SIDE_WIDTH - CLASSIC_HEADER_GAP)
+
+
+def _dense_metric_wraplength(theme: DesktopCardTheme) -> int:
+    return max(130, int((theme.width - DENSE_HEADER_OUTER_PADDING - DENSE_HEADER_COLUMN_GAP) / 3))
+
+
+def _title_font_size(text: str, default: int, minimum: int) -> int:
+    length = len(text.strip())
+    if length <= 18:
+        return default
+    if length <= 28:
+        return max(minimum, default - 4)
+    return max(minimum, default - 6)
 
 
 def _divider(tk, parent, theme: DesktopCardTheme):
