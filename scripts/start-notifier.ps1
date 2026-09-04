@@ -13,6 +13,8 @@ param(
     [switch]$TestDesktop,
     [switch]$DesktopOn,
     [switch]$DesktopOff,
+    [switch]$DesktopCard,
+    [switch]$DesktopBox,
     [switch]$DesktopStatus,
     [int]$RecalcFood = 0,
     [int]$RecalcMinInterval = 135,
@@ -135,6 +137,14 @@ if ($DesktopOn) {
 }
 if ($DesktopOff) {
     Invoke-NotifierForeground @("--desktop-off")
+    exit $LASTEXITCODE
+}
+if ($DesktopCard) {
+    Invoke-NotifierForeground @("--desktop-card")
+    exit $LASTEXITCODE
+}
+if ($DesktopBox) {
+    Invoke-NotifierForeground @("--desktop-box")
     exit $LASTEXITCODE
 }
 if ($DesktopStatus) {

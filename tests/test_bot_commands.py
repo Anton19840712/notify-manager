@@ -41,12 +41,16 @@ class BotCommandRegistryTests(unittest.TestCase):
         self.assertIn({"command": "chrysostom_on", "description": "включить молитвы Златоуста"}, payload)
         self.assertIn({"command": "chrysostom_off", "description": "выключить молитвы Златоуста"}, payload)
         self.assertIn({"command": "processes", "description": "процессы на сегодня"}, payload)
+        self.assertIn({"command": "desktop_card", "description": "desktop карточки"}, payload)
+        self.assertIn({"command": "desktop_box", "description": "desktop MsgBox"}, payload)
 
     def test_help_text_is_generated_from_same_registry(self):
         help_text = format_bot_commands_help()
 
         self.assertIn("/mi1 - съел 1 прием пищи", help_text)
         self.assertIn("/desktop_on - включить desktop окна", help_text)
+        self.assertIn("/desktop_card - desktop карточки", help_text)
+        self.assertIn("/desktop_box - desktop MsgBox", help_text)
         self.assertIn("/stop_bot - остановить локальный notifier", help_text)
         self.assertIn("/sd - перенести старт дня, пример /sd 10:00", help_text)
         self.assertIn("/block_on - подключить блок", help_text)

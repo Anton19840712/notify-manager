@@ -9,7 +9,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from day_notifier.app import NotifierApp, format_startup_summary, select_due_events
-from day_notifier.config import load_settings, set_desktop_enabled
+from day_notifier.config import load_settings, set_desktop_enabled, set_desktop_mode
+from day_notifier.desktop_actions import DesktopAction
 from day_notifier.schedule import Schedule, ScheduleEvent
 from day_notifier.state import JsonStateStore
 from day_notifier.telegram_client import DeleteSummary, TelegramCommand
@@ -55,6 +56,66 @@ class ConfigStateAppTests(unittest.TestCase):
         self.assertFalse(reloaded.desktop_enabled)
         self.assertEqual(reloaded.bot_token, "123:abc")
         self.assertEqual(reloaded.chat_id, "456")
+
+    def test_load_settings_reads_desktop_mode(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "settings.json"
+            path.write_text('{"desktop_mode": "card"}', encoding="utf-8")
+
+            settings = load_settings(path)
+
+        self.assertTrue(settings.desktop_enabled)
+        self.assertEqual(settings.desktop_mode, "card")
+
+    def test_load_settings_turns_legacy_disabled_desktop_into_off_mode(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "settings.json"
+            path.write_text('{"desktop_enabled": false}', encoding="utf-8")
+
+            settings = load_settings(path)
+
+        self.assertFalse(settings.desktop_enabled)
+        self.assertEqual(settings.desktop_mode, "off")
+
+    def test_load_settings_prefers_disabled_legacy_flag_over_desktop_mode(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "settings.json"
+            path.write_text('{"desktop_enabled": false, "desktop_mode": "card"}', encoding="utf-8")
+
+            settings = load_settings(path)
+
+        self.assertFalse(settings.desktop_enabled)
+        self.assertEqual(settings.desktop_mode, "off")
+
+    def test_set_desktop_mode_preserves_existing_settings(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "settings.json"
+            path.write_text(
+                '{"bot_token": "123:abc", "chat_id": "456", "desktop_enabled": true}',
+                encoding="utf-8",
+            )
+
+            settings = set_desktop_mode(path, "card")
+            reloaded = load_settings(path)
+
+        self.assertTrue(settings.desktop_enabled)
+        self.assertEqual(settings.desktop_mode, "card")
+        self.assertTrue(reloaded.desktop_enabled)
+        self.assertEqual(reloaded.desktop_mode, "card")
+        self.assertEqual(reloaded.bot_token, "123:abc")
+        self.assertEqual(reloaded.chat_id, "456")
+
+    def test_set_desktop_mode_off_updates_legacy_flag(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "settings.json"
+
+            settings = set_desktop_mode(path, "off")
+            reloaded = load_settings(path)
+
+        self.assertFalse(settings.desktop_enabled)
+        self.assertEqual(settings.desktop_mode, "off")
+        self.assertFalse(reloaded.desktop_enabled)
+        self.assertEqual(reloaded.desktop_mode, "off")
 
     def test_state_persists_seen_event_and_last_event(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -329,7 +390,7 @@ class ConfigStateAppTests(unittest.TestCase):
         self.assertEqual(calls[1][1], "notify-manager")
         self.assertTrue(calls[1][3])
 
-    def test_scheduled_notification_sends_telegram_before_desktop_box(self):
+    def test_scheduled_notification_sends_telegram_before_desktop_card(self):
         calls = []
         app = NotifierApp.__new__(NotifierApp)
         app.telegram = RecordingTelegram(calls)
@@ -348,10 +409,95 @@ class ConfigStateAppTests(unittest.TestCase):
         self.assertEqual(calls[0][0], "telegram")
         self.assertEqual(calls[1][0], "telegram-state")
         self.assertEqual(calls[2][0], "desktop")
-        self.assertEqual(calls[2][1], "1 пв")
-        self.assertIn("Сейчас: 07:00", calls[2][2])
-        self.assertFalse(calls[2][3])
+        self.assertEqual(calls[2][1].event_id, "water-1")
+        self.assertEqual(calls[2][1].title, "1 пв")
+        self.assertIn("Сейчас: 07:00", calls[2][1].body)
         self.assertEqual(calls[3], ("state", "water-1"))
+
+    def test_run_once_processes_desktop_action_queue(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_project_files(root)
+            action_path = root / "data" / "desktop_actions.jsonl"
+            action_path.write_text(
+                json.dumps(
+                    {
+                        "action_id": "action-1",
+                        "action": "snooze_10",
+                        "event_id": "water-1",
+                        "title": "1 пв",
+                        "message": "Выпей воду",
+                        "when": "2026-08-30T07:00:00",
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            app = NotifierApp(root)
+            app.telegram = None
+            calls = []
+            app.state = ActionRecordingState(calls)
+
+            app.run_once(now=datetime(2026, 8, 30, 3, 50))
+            queue_text = action_path.read_text(encoding="utf-8")
+
+        self.assertEqual(calls, [("snooze", "water-1", 10)])
+        self.assertEqual(queue_text, "")
+
+    def test_desktop_snooze_action_uses_current_time_when_event_is_late(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            app = NotifierApp.__new__(NotifierApp)
+            app.state = JsonStateStore(Path(temp_dir) / "state.json")
+            action = DesktopAction(
+                action_id="late-snooze",
+                action="snooze_10",
+                event_id="meal-1",
+                title="1 пп",
+                message="Контейнер.",
+                when=datetime(2026, 9, 4, 7, 15),
+            )
+
+            app._apply_desktop_action(action, datetime(2026, 9, 4, 7, 30))
+            due = app.state.due_snoozes(datetime(2026, 9, 4, 7, 40))
+
+        self.assertEqual(due[0].when, datetime(2026, 9, 4, 7, 40))
+
+    def test_desktop_done_action_for_meal_recalculates_remaining_food(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_project_files(root)
+            schedule_path = root / "config" / "schedule.json"
+            data = json.loads(schedule_path.read_text(encoding="utf-8"))
+            data["cycles"][0]["items"].append(
+                {
+                    "offset_minutes": 15,
+                    "id_template": "meal-{n}",
+                    "title_template": "{n} пп",
+                    "message_template": "{n} прием пищи",
+                }
+            )
+            schedule_path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+            app = NotifierApp(root)
+            action = DesktopAction(
+                action_id="meal-done",
+                action="done",
+                event_id="meal-2",
+                title="2 пп",
+                message="2 прием пищи",
+                when=datetime(2026, 8, 30, 9, 40),
+            )
+
+            app._apply_desktop_action(action, datetime(2026, 8, 30, 12, 25))
+            override_text = (root / "data" / "day_overrides" / "2026-08-30.json").read_text(
+                encoding="utf-8"
+            )
+
+        self.assertIn("14:40", override_text)
+        self.assertIn("3 пп", override_text)
+        self.assertIn("17:05", override_text)
+        self.assertIn("4 пп", override_text)
+        self.assertIn('"water-food-cycle"', override_text)
 
     def test_wake_up_notification_starts_audio_before_marking_notified(self):
         calls = []
@@ -642,6 +788,10 @@ class RecordingDesktop:
         self.calls.append(("desktop", title, message, blocking))
         return True
 
+    def show_event(self, view_model):
+        self.calls.append(("desktop", view_model))
+        return True
+
 
 class NoopAudio:
     def play_for_event(self, event):
@@ -667,6 +817,29 @@ class RecordingState:
 
     def mark_notified(self, event):
         self.calls.append(("state", event.event_id))
+
+
+class ActionRecordingState(RecordingState):
+    def has_seen(self, event):
+        return False
+
+    def due_snoozes(self, now):
+        return []
+
+    def add_snooze(self, event, minutes):
+        self.calls.append(("snooze", event.event_id, minutes))
+        return ScheduleEvent(
+            event_id=f"{event.event_id}-snooze",
+            title=f"{event.title} +{minutes} мин",
+            message=event.message,
+            when=event.when + timedelta(minutes=minutes),
+        )
+
+    def mark_done(self, event, when):
+        self.calls.append(("done", event.event_id, when.strftime("%H:%M")))
+
+    def mark_skipped(self, event):
+        self.calls.append(("skip", event.event_id))
 
 
 def write_project_files(root: Path) -> None:

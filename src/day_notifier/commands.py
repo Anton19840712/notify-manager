@@ -33,6 +33,10 @@ DESKTOP_COMMAND_ALIASES = {
     "desktop_off": "off",
     "/desktop_status": "status",
     "desktop_status": "status",
+    "/desktop_card": "card",
+    "desktop_card": "card",
+    "/desktop_box": "box",
+    "desktop_box": "box",
 }
 BLOCK_COMMAND_ALIASES: dict[str, tuple[str | None, bool | None]] = {
     "/blocks": (None, None),
@@ -74,6 +78,8 @@ class CommandContext:
     now: Callable[[], datetime]
     set_desktop_enabled: Callable[[bool], None] | None = None
     is_desktop_enabled: Callable[[], bool] | None = None
+    set_desktop_mode: Callable[[str], str] | None = None
+    desktop_status: Callable[[], str] | None = None
     set_block_enabled: Callable[[str, bool], str] | None = None
     block_status: Callable[[str | None], str] | None = None
     override_dir: Path | None = None
@@ -261,12 +267,22 @@ def _desktop(argument: str, context: CommandContext) -> str:
             return "Desktop-канал недоступен в этом режиме."
         context.set_desktop_enabled(False)
         return "Desktop-уведомления выключены."
+    if value in {"card", "cards", "карточка", "карточки"}:
+        if context.set_desktop_mode is None:
+            return "Desktop-режим карточек недоступен в этом режиме."
+        return context.set_desktop_mode("card")
+    if value in {"box", "msgbox", "message_box", "message-box", "окно", "окна"}:
+        if context.set_desktop_mode is None:
+            return "Desktop-режим MsgBox недоступен в этом режиме."
+        return context.set_desktop_mode("message_box")
     if value in {"status", "статус", ""}:
+        if context.desktop_status is not None:
+            return context.desktop_status()
         if context.is_desktop_enabled is None:
             return "Desktop-канал недоступен в этом режиме."
         state = "включены" if context.is_desktop_enabled() else "выключены"
         return f"Desktop-уведомления сейчас {state}."
-    return "Используй: /desktop on, /desktop off или /desktop status."
+    return "Используй: /desktop card, /desktop box, /desktop off или /desktop status."
 
 
 def _set_block_enabled(argument: str, enabled: bool, context: CommandContext) -> str:

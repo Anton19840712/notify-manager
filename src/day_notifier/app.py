@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import re
 import time
 import zipfile
 from datetime import datetime
@@ -18,12 +19,15 @@ from day_notifier.blocks import (
 )
 from day_notifier.bot_commands import bot_command_payload, format_bot_command_sync_result
 from day_notifier.commands import CommandContext, handle_command
-from day_notifier.config import Settings, load_settings, set_desktop_enabled
+from day_notifier.config import Settings, load_settings, set_desktop_enabled, set_desktop_mode as write_desktop_mode
 from day_notifier.desktop import DesktopNotifier
+from day_notifier.desktop_actions import DesktopAction, consume_desktop_actions
 from day_notifier.event_formatting import format_event_line, format_notification_text
 from day_notifier.meal_voice import format_meal_voice_status, set_meal_voice_profile
+from day_notifier.notification_view import build_notification_view
 from day_notifier.overrides import (
     format_min_interval_food_events,
+    write_meal_done_override,
     write_min_interval_food_override,
     write_shifted_day_override,
 )
@@ -31,6 +35,10 @@ from day_notifier.process_backlog import format_processes_today, read_process_it
 from day_notifier.schedule import Schedule, ScheduleEvent, load_schedule
 from day_notifier.state import JsonStateStore
 from day_notifier.telegram_client import TelegramClient
+
+
+MEAL_NUMBER_EVENT_ID_PATTERN = re.compile(r"^(?:override-)?meal-(\d+)$", re.IGNORECASE)
+MEAL_NUMBER_TITLE_PATTERN = re.compile(r"^(\d+)\s*пп$", re.IGNORECASE)
 
 
 def select_due_events(
@@ -64,8 +72,14 @@ class NotifierApp:
         self.state = JsonStateStore(root / "data" / "state.json")
         self.inbox_path = root / "data" / "inbox.md"
         self.meal_voice_state_path = root / "data" / "audio" / "meal_voice_state.json"
+        self.desktop_action_path = root / "data" / "desktop_actions.jsonl"
         self.process_backlog_path = self._find_process_backlog_path()
-        self.desktop = DesktopNotifier(enabled=self.settings.desktop_enabled)
+        self.desktop = DesktopNotifier(
+            enabled=self.settings.desktop_enabled,
+            mode=self.settings.desktop_mode,
+            root=root,
+            action_queue_path=self.desktop_action_path,
+        )
         self.audio = AudioCuePlayer(root, morning_prayer_enabled=self.is_morning_prayer_enabled)
         self.telegram = _make_telegram_client(self.settings)
         self.stop_requested = False
@@ -83,6 +97,7 @@ class NotifierApp:
         self.refresh_settings()
         self.reload_schedule()
         current = now or datetime.now()
+        self.process_desktop_actions(current)
         events = self.schedule.events_for_date(current.date()) + self.state.due_snoozes(current)
         due = select_due_events(
             events,
@@ -105,7 +120,7 @@ class NotifierApp:
     def notify(self, event: ScheduleEvent, now: datetime | None = None) -> None:
         current = now or datetime.now()
         telegram_text = format_notification_text(event, current)
-        desktop_text = format_notification_text(event, current, include_current_time=True)
+        desktop_view = build_notification_view(event, current)
         self.audio.play_for_event(event)
         if _is_bedtime_event(event):
             logging.info(self.cleanup_telegram_chat())
@@ -114,7 +129,10 @@ class NotifierApp:
                 self.send_telegram_message(telegram_text)
             except Exception:
                 logging.exception("Telegram notification failed")
-        self.desktop.show(event.title, desktop_text)
+        if hasattr(self.desktop, "show_event"):
+            self.desktop.show_event(desktop_view)
+        else:
+            self.desktop.show(event.title, desktop_view.body)
         self.state.mark_notified(event)
 
     def process_telegram_commands(self) -> None:
@@ -133,6 +151,8 @@ class NotifierApp:
             now=datetime.now,
             set_desktop_enabled=self.set_desktop_enabled,
             is_desktop_enabled=self.is_desktop_enabled,
+            set_desktop_mode=self.set_desktop_mode,
+            desktop_status=self.desktop_status,
             set_block_enabled=self.set_block_enabled,
             block_status=self.block_status,
             override_dir=self.override_dir,
@@ -219,7 +239,12 @@ class NotifierApp:
             return f"Не смог переключить голос приема пищи: {exc}"
 
     def test_desktop_notification(self) -> None:
-        self.desktop.show("notify-manager", "Тест desktop MsgBox: центральное окно работает.", blocking=True)
+        self.desktop.show("notify-manager", "Тест desktop-уведомления: центральное окно работает.", blocking=True)
+
+    def process_desktop_actions(self, now: datetime | None = None) -> None:
+        current = now or datetime.now()
+        for action in consume_desktop_actions(self.desktop_action_path):
+            self._apply_desktop_action(action, current)
 
     def recalc_food_day(
         self,
@@ -271,10 +296,23 @@ class NotifierApp:
 
     def set_desktop_enabled(self, enabled: bool) -> None:
         self.settings = set_desktop_enabled(self.settings_path, enabled)
-        self.desktop.enabled = self.settings.desktop_enabled
+        self.desktop.configure(self.settings.desktop_enabled, self.settings.desktop_mode)
 
     def is_desktop_enabled(self) -> bool:
         return self.desktop.enabled
+
+    def set_desktop_mode(self, mode: str) -> str:
+        try:
+            self.settings = write_desktop_mode(self.settings_path, mode)
+        except ValueError as exc:
+            return f"Не смог переключить desktop-режим: {exc}"
+        self.desktop.configure(self.settings.desktop_enabled, self.settings.desktop_mode)
+        return self.desktop_status()
+
+    def desktop_status(self) -> str:
+        if not self.settings.desktop_enabled or self.settings.desktop_mode == "off":
+            return "Desktop-уведомления выключены."
+        return f"Desktop-уведомления включены. Режим: {self.settings.desktop_mode}."
 
     def set_block_enabled(self, block_id: str, enabled: bool) -> str:
         try:
@@ -301,7 +339,7 @@ class NotifierApp:
     def refresh_settings(self) -> None:
         previous = self.settings
         self.settings = load_settings(self.settings_path)
-        self.desktop.enabled = self.settings.desktop_enabled
+        self.desktop.configure(self.settings.desktop_enabled, self.settings.desktop_mode)
         if (previous.bot_token, previous.chat_id) != (self.settings.bot_token, self.settings.chat_id):
             self.telegram = _make_telegram_client(self.settings)
 
@@ -318,6 +356,33 @@ class NotifierApp:
         if not processes:
             return text
         return f"{text}\n\n{processes}"
+
+    def _apply_desktop_action(self, action: DesktopAction, now: datetime) -> None:
+        event = action.to_event()
+        if action.action == "done":
+            meal_number = _meal_number(event)
+            if meal_number is not None:
+                try:
+                    write_meal_done_override(
+                        override_dir=self.override_dir,
+                        schedule=self.schedule,
+                        day=now.date(),
+                        completed_meal_number=meal_number,
+                        completed_at=now,
+                    )
+                    self.reload_schedule()
+                except ValueError:
+                    logging.exception("Could not recalculate food from desktop meal action")
+                    self.state.mark_done(event, now)
+                return
+            self.state.mark_done(event, now)
+            return
+        if action.action == "snooze_10":
+            anchor = event if event.when > now else ScheduleEvent(event.event_id, event.title, event.message, now)
+            self.state.add_snooze(anchor, 10)
+            return
+        if action.action == "skip":
+            self.state.mark_skipped(event)
 
 
 def format_startup_summary(schedule: Schedule, now: datetime, limit: int = 10) -> str:
@@ -338,9 +403,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--processes", action="store_true", help="Print due process backlog items and exit")
     parser.add_argument("--test-telegram", action="store_true", help="Send a test desktop and Telegram notification")
     parser.add_argument("--sync-bot-commands", action="store_true", help="Sync Telegram bot command menu")
-    parser.add_argument("--test-desktop", action="store_true", help="Show a blocking desktop message box")
+    parser.add_argument("--test-desktop", action="store_true", help="Show a desktop notification test")
     parser.add_argument("--desktop-on", action="store_true", help="Enable desktop message boxes")
     parser.add_argument("--desktop-off", action="store_true", help="Disable desktop message boxes")
+    parser.add_argument("--desktop-card", action="store_true", help="Use rich desktop notification cards")
+    parser.add_argument("--desktop-box", action="store_true", help="Use Windows desktop message boxes")
     parser.add_argument("--desktop-status", action="store_true", help="Print desktop message box status")
     parser.add_argument("--recalc-food", type=int, help="Recalculate remaining food events for today")
     parser.add_argument("--recalc-min-interval", type=int, default=135, help="Minimum minutes between food events")
@@ -380,9 +447,14 @@ def main() -> int:
         app.set_desktop_enabled(False)
         print("Desktop-уведомления выключены.")
         return 0
+    if args.desktop_card:
+        print(app.set_desktop_mode("card"))
+        return 0
+    if args.desktop_box:
+        print(app.set_desktop_mode("message_box"))
+        return 0
     if args.desktop_status:
-        state = "включены" if app.is_desktop_enabled() else "выключены"
-        print(f"Desktop-уведомления сейчас {state}.")
+        print(app.desktop_status())
         return 0
     if args.recalc_food is not None:
         anchor = _parse_today_anchor(args.recalc_anchor) if args.recalc_anchor else None
@@ -420,3 +492,11 @@ def _parse_today_anchor(value: str) -> datetime:
 
 def _is_bedtime_event(event: ScheduleEvent) -> bool:
     return event.event_id.lower() == "bedtime" or event.title.strip().lower() == "отбой"
+
+
+def _meal_number(event: ScheduleEvent) -> int | None:
+    id_match = MEAL_NUMBER_EVENT_ID_PATTERN.match(event.event_id)
+    if id_match:
+        return int(id_match.group(1))
+    title_match = MEAL_NUMBER_TITLE_PATTERN.match(event.title.strip())
+    return int(title_match.group(1)) if title_match else None

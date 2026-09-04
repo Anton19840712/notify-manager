@@ -249,6 +249,28 @@ class CommandTests(unittest.TestCase):
 
         self.assertIn("выключены", result.reply)
 
+    def test_desktop_command_can_switch_to_card_mode(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+            calls = []
+            context.set_desktop_mode = lambda mode: calls.append(mode) or "Desktop-режим: card."
+
+            result = handle_command("/desktop card", context)
+
+        self.assertEqual(calls, ["card"])
+        self.assertIn("card", result.reply)
+
+    def test_desktop_command_can_switch_to_message_box_mode(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+            calls = []
+            context.set_desktop_mode = lambda mode: calls.append(mode) or "Desktop-режим: message_box."
+
+            result = handle_command("/desktop box", context)
+
+        self.assertEqual(calls, ["message_box"])
+        self.assertIn("message_box", result.reply)
+
     def test_recalc_food_command_writes_min_interval_day_override_without_water(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             context = self.make_context(Path(temp_dir) / "inbox.md")
@@ -486,6 +508,19 @@ class CommandTests(unittest.TestCase):
         self.assertIn("выключены", off_result.reply)
         self.assertIn("сейчас включены", status_result.reply)
 
+    def test_botfather_desktop_card_and_box_aliases_switch_modes(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = self.make_context(Path(temp_dir) / "inbox.md")
+            calls = []
+            context.set_desktop_mode = lambda mode: calls.append(mode) or f"Desktop-режим: {mode}."
+
+            card_result = handle_command("/desktop_card", context)
+            box_result = handle_command("/desktop_box", context)
+
+        self.assertEqual(calls, ["card", "message_box"])
+        self.assertIn("card", card_result.reply)
+        self.assertIn("message_box", box_result.reply)
+
     def test_block_on_command_uses_block_callback(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             context = self.make_context(Path(temp_dir) / "inbox.md")
@@ -591,6 +626,7 @@ class CommandTests(unittest.TestCase):
         self.assertIn("/training_off - выключить тренировки", result.reply)
         self.assertIn("/processes - процессы на сегодня", result.reply)
         self.assertIn("/mv - голос приема пищи", result.reply)
+        self.assertIn("/desktop_card - desktop карточки", result.reply)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 # Day Notifier
 
-Local Windows notifier for day practices. It reads `config/schedule.json`, shows desktop popups, sends Telegram Bot API messages, and accepts simple Telegram commands.
+Local Windows notifier for day practices. It reads `config/schedule.json`, shows desktop popups or notification cards, sends Telegram Bot API messages, and accepts simple Telegram commands.
 
 ## Setup
 
@@ -78,9 +78,11 @@ The AutoHotkey script starts the notifier and adds tray menu actions:
 - `Processes`
 - `Test Telegram`
 - `Sync Bot Commands`
-- `Test Desktop MsgBox`
+- `Test Desktop`
 - `Desktop On`
 - `Desktop Off`
+- `Desktop Card`
+- `Desktop Box`
 - `Desktop Status`
 
 Install Windows autostart for the AutoHotkey control:
@@ -131,7 +133,7 @@ Sync the Telegram bot command menu:
 .\scripts\start-notifier.ps1 -SyncBotCommands
 ```
 
-Show a blocking center-screen desktop message box:
+Show a desktop notification test:
 
 ```powershell
 .\scripts\start-notifier.ps1 -TestDesktop
@@ -142,8 +144,18 @@ Control the desktop channel:
 ```powershell
 .\scripts\start-notifier.ps1 -DesktopOn
 .\scripts\start-notifier.ps1 -DesktopOff
+.\scripts\start-notifier.ps1 -DesktopCard
+.\scripts\start-notifier.ps1 -DesktopBox
 .\scripts\start-notifier.ps1 -DesktopStatus
 ```
+
+Desktop modes:
+
+- `card` - non-blocking center-screen card with structured text and action buttons.
+- `message_box` - classic Windows MsgBox fallback.
+- `off` - no desktop reminders.
+
+Card actions are written to `data/desktop_actions.jsonl` and picked up by the next notifier polling cycle. `Готово` marks the event done, `+10` snoozes it, and `Пропустить` skips it.
 
 Recalculate today's food cycle without changing the base schedule:
 
@@ -175,7 +187,7 @@ This writes a local one-day override to `data/day_overrides/`. Override files ar
 - `/mv` - show the active meal voice and all profile ids.
 - `/mv 3` or `/mv female_sonia` - switch the meal voice profile without restarting notify-manager.
 - `/otboy`, `/отбой`, or `отбой` - delete tracked bot-chat messages and leave one bedtime confirmation. The scheduled `Отбой` event also clears tracked Telegram messages before sending its own reminder.
-- `/desktop on`, `/desktop off`, `/desktop status`, `/desktop_on`, `/desktop_off`, `/desktop_status` - control center-screen MsgBox reminders.
+- `/desktop card`, `/desktop box`, `/desktop off`, `/desktop status`, `/desktop_on`, `/desktop_off`, `/desktop_status`, `/desktop_card`, `/desktop_box` - control desktop reminders.
 - `/block_on self-development`, `/block_off training`, `/block_status`, or `/blocks` - connect, disconnect, or inspect optional practice blocks.
 - `/selfdev_on`, `/selfdev_off`, `/training_on`, `/training_off`, `/prayers_on`, `/prayers_off`, `/chrysostom_on`, `/chrysostom_off` - quick BotFather-safe block toggles.
 - `подключить блок self-development`, `отключить блок training`, or `блоки` - plain-text aliases for block control.

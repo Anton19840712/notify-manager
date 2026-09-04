@@ -5,6 +5,8 @@ day-notifier/data/state.json
 day-notifier/data/notifier.pid
 day-notifier/data/block_state.json
 day-notifier/data/audio/meal_voice_state.json
+day-notifier/data/desktop_actions.jsonl
+day-notifier/data/desktop_cards/
 day-notifier/data/day_overrides/
 day-notifier/logs/
 
@@ -12,6 +14,8 @@ config/settings.json
 data/state.json
 data/notifier.pid
 data/block_state.json
+data/desktop_actions.jsonl
+data/desktop_cards/
 data/day_overrides/
 logs/
 

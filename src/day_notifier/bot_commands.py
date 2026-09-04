@@ -32,6 +32,8 @@ BOT_COMMANDS: tuple[BotCommandDefinition, ...] = (
     BotCommandDefinition("desktop_on", "включить desktop окна"),
     BotCommandDefinition("desktop_off", "выключить desktop окна"),
     BotCommandDefinition("desktop_status", "статус desktop окон"),
+    BotCommandDefinition("desktop_card", "desktop карточки"),
+    BotCommandDefinition("desktop_box", "desktop MsgBox"),
     BotCommandDefinition("block_on", "подключить блок"),
     BotCommandDefinition("block_off", "отключить блок"),
     BotCommandDefinition("block_status", "статус блоков"),
@@ -66,6 +68,7 @@ def format_bot_commands_help(commands: Iterable[BotCommandDefinition] = BOT_COMM
     lines.extend(f"/{command.command} - {command.description}" for command in command_list)
     lines.append("")
     lines.append("Аргументы: /sd 10:00, /snooze 10, /recalc food 4, /inbox текст.")
+    lines.append("Desktop: /desktop_card, /desktop_box, /desktop_off, /desktop_status.")
     lines.append("Блоки: /blocks, /selfdev_on, /selfdev_off, /training_on, /training_off.")
     lines.append("Молитвы: /prayers_on, /prayers_off, /chrysostom_on, /chrysostom_off.")
     lines.append("Id для /block_on: self-development, training, prayers, chrysostom-prayers.")
