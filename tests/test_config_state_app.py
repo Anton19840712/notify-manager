@@ -10,6 +10,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from day_notifier.app import NotifierApp, format_startup_summary, select_due_events
 from day_notifier.config import load_settings, set_desktop_enabled, set_desktop_mode
+from day_notifier.desktop_card_themes import DEFAULT_DESKTOP_CARD_THEME
 from day_notifier.desktop_actions import DesktopAction
 from day_notifier.schedule import Schedule, ScheduleEvent
 from day_notifier.state import JsonStateStore
@@ -66,6 +67,16 @@ class ConfigStateAppTests(unittest.TestCase):
 
         self.assertTrue(settings.desktop_enabled)
         self.assertEqual(settings.desktop_mode, "card")
+        self.assertEqual(settings.desktop_card_theme, DEFAULT_DESKTOP_CARD_THEME)
+
+    def test_load_settings_reads_desktop_card_theme(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "settings.json"
+            path.write_text('{"desktop_card_theme": "3"}', encoding="utf-8")
+
+            settings = load_settings(path)
+
+        self.assertEqual(settings.desktop_card_theme, "dark_glass_command")
 
     def test_load_settings_turns_legacy_disabled_desktop_into_off_mode(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -91,7 +102,7 @@ class ConfigStateAppTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir) / "settings.json"
             path.write_text(
-                '{"bot_token": "123:abc", "chat_id": "456", "desktop_enabled": true}',
+                '{"bot_token": "123:abc", "chat_id": "456", "desktop_enabled": true, "desktop_card_theme": "midnight_mint"}',
                 encoding="utf-8",
             )
 
@@ -102,6 +113,7 @@ class ConfigStateAppTests(unittest.TestCase):
         self.assertEqual(settings.desktop_mode, "card")
         self.assertTrue(reloaded.desktop_enabled)
         self.assertEqual(reloaded.desktop_mode, "card")
+        self.assertEqual(reloaded.desktop_card_theme, "midnight_mint")
         self.assertEqual(reloaded.bot_token, "123:abc")
         self.assertEqual(reloaded.chat_id, "456")
 

@@ -16,6 +16,7 @@ from day_notifier.config import (
     DESKTOP_MODE_OFF,
     normalize_desktop_mode,
 )
+from day_notifier.desktop_card_themes import DEFAULT_DESKTOP_CARD_THEME, normalize_desktop_card_theme
 from day_notifier.notification_view import NotificationViewModel
 
 
@@ -28,12 +29,14 @@ class DesktopNotifier:
         self,
         enabled: bool = True,
         mode: str = DESKTOP_MODE_MESSAGE_BOX,
+        card_theme: str = DEFAULT_DESKTOP_CARD_THEME,
         message_box: MessageBox | None = None,
         root: Path | None = None,
         action_queue_path: Path | None = None,
         card_launcher: CardLauncher | None = None,
     ) -> None:
         self.mode = normalize_desktop_mode(mode)
+        self.card_theme = normalize_desktop_card_theme(card_theme)
         self.enabled = enabled and self.mode != DESKTOP_MODE_OFF
         self.root = root or Path.cwd()
         self.action_queue_path = action_queue_path or (self.root / "data" / "desktop_actions.jsonl")
@@ -50,6 +53,7 @@ class DesktopNotifier:
                 "status": "",
                 "importance": "normal",
                 "actions": [],
+                "theme": self.card_theme,
             }
         ):
             return True
@@ -60,13 +64,16 @@ class DesktopNotifier:
             return False
         if self.mode == DESKTOP_MODE_CARD:
             payload = view_model.to_payload(str(self.action_queue_path))
+            payload["theme"] = self.card_theme
             if self._show_card_payload(payload):
                 return True
         return self._show_message_box(view_model.title, view_model.body, blocking=False)
 
-    def configure(self, enabled: bool, mode: str | None = None) -> None:
+    def configure(self, enabled: bool, mode: str | None = None, card_theme: str | None = None) -> None:
         if mode is not None:
             self.mode = normalize_desktop_mode(mode)
+        if card_theme is not None:
+            self.card_theme = normalize_desktop_card_theme(card_theme)
         if not enabled:
             self.enabled = False
             self.mode = DESKTOP_MODE_OFF

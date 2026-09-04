@@ -155,6 +155,19 @@ Desktop modes:
 - `message_box` - classic Windows MsgBox fallback.
 - `off` - no desktop reminders.
 
+Desktop cards use `desktop_card_theme` from `config/settings.json`. The default is `rotate_daily`: one of the 10 approved card themes is selected by date and changes every day. To pin a specific theme instead, set `desktop_card_theme` to a number from `1` to `10` or to a theme id:
+
+- `glass_classic_green`
+- `soft_green_classic`
+- `dark_glass_command`
+- `native_monochrome`
+- `calm_dense_light`
+- `quiet_white_slip`
+- `midnight_mint`
+- `precision_status`
+- `blue_glass_classic`
+- `compact_dark_strip`
+
 Card actions are written to `data/desktop_actions.jsonl` and picked up by the next notifier polling cycle. `Готово` marks the event done, `+10` snoozes it, and `Пропустить` skips it.
 
 Recalculate today's food cycle without changing the base schedule:

@@ -37,6 +37,7 @@ class DesktopNotifierTests(unittest.TestCase):
             notifier = DesktopNotifier(
                 enabled=True,
                 mode="card",
+                card_theme="dark_glass_command",
                 root=Path(temp_dir),
                 card_launcher=lambda payload: calls.append(payload) or True,
             )
@@ -53,6 +54,7 @@ class DesktopNotifierTests(unittest.TestCase):
         self.assertTrue(shown)
         self.assertEqual(calls[0]["event"]["event_id"], "meal-1")
         self.assertEqual(calls[0]["title"], "1 пп")
+        self.assertEqual(calls[0]["theme"], "dark_glass_command")
         self.assertIn("до приема пищи", calls[0]["status"])
         self.assertIn("done", [action["action"] for action in calls[0]["actions"]])
 

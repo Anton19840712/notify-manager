@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from day_notifier.desktop_card_themes import DEFAULT_DESKTOP_CARD_THEME, normalize_desktop_card_theme
+
 
 DESKTOP_MODE_MESSAGE_BOX = "message_box"
 DESKTOP_MODE_CARD = "card"
@@ -32,6 +34,7 @@ class Settings:
     telegram_poll_seconds: int = 5
     desktop_enabled: bool = True
     desktop_mode: str = DESKTOP_MODE_MESSAGE_BOX
+    desktop_card_theme: str = DEFAULT_DESKTOP_CARD_THEME
     startup_summary_enabled: bool = True
 
     @property
@@ -62,6 +65,7 @@ def load_settings(path: Path) -> Settings:
         telegram_poll_seconds=int(data.get("telegram_poll_seconds", 5)),
         desktop_enabled=desktop_mode != DESKTOP_MODE_OFF,
         desktop_mode=desktop_mode,
+        desktop_card_theme=normalize_desktop_card_theme(data.get("desktop_card_theme")),
         startup_summary_enabled=bool(data.get("startup_summary_enabled", True)),
     )
 

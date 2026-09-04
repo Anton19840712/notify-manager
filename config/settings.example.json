@@ -6,5 +6,6 @@
   "telegram_poll_seconds": 5,
   "desktop_enabled": true,
   "desktop_mode": "message_box",
+  "desktop_card_theme": "rotate_daily",
   "startup_summary_enabled": true
 }

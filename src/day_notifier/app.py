@@ -77,6 +77,7 @@ class NotifierApp:
         self.desktop = DesktopNotifier(
             enabled=self.settings.desktop_enabled,
             mode=self.settings.desktop_mode,
+            card_theme=self.settings.desktop_card_theme,
             root=root,
             action_queue_path=self.desktop_action_path,
         )
@@ -296,7 +297,11 @@ class NotifierApp:
 
     def set_desktop_enabled(self, enabled: bool) -> None:
         self.settings = set_desktop_enabled(self.settings_path, enabled)
-        self.desktop.configure(self.settings.desktop_enabled, self.settings.desktop_mode)
+        self.desktop.configure(
+            self.settings.desktop_enabled,
+            self.settings.desktop_mode,
+            self.settings.desktop_card_theme,
+        )
 
     def is_desktop_enabled(self) -> bool:
         return self.desktop.enabled
@@ -306,13 +311,20 @@ class NotifierApp:
             self.settings = write_desktop_mode(self.settings_path, mode)
         except ValueError as exc:
             return f"Не смог переключить desktop-режим: {exc}"
-        self.desktop.configure(self.settings.desktop_enabled, self.settings.desktop_mode)
+        self.desktop.configure(
+            self.settings.desktop_enabled,
+            self.settings.desktop_mode,
+            self.settings.desktop_card_theme,
+        )
         return self.desktop_status()
 
     def desktop_status(self) -> str:
         if not self.settings.desktop_enabled or self.settings.desktop_mode == "off":
             return "Desktop-уведомления выключены."
-        return f"Desktop-уведомления включены. Режим: {self.settings.desktop_mode}."
+        return (
+            f"Desktop-уведомления включены. Режим: {self.settings.desktop_mode}. "
+            f"Тема карточки: {self.settings.desktop_card_theme}."
+        )
 
     def set_block_enabled(self, block_id: str, enabled: bool) -> str:
         try:
@@ -339,7 +351,11 @@ class NotifierApp:
     def refresh_settings(self) -> None:
         previous = self.settings
         self.settings = load_settings(self.settings_path)
-        self.desktop.configure(self.settings.desktop_enabled, self.settings.desktop_mode)
+        self.desktop.configure(
+            self.settings.desktop_enabled,
+            self.settings.desktop_mode,
+            self.settings.desktop_card_theme,
+        )
         if (previous.bot_token, previous.chat_id) != (self.settings.bot_token, self.settings.chat_id):
             self.telegram = _make_telegram_client(self.settings)
 
